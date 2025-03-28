@@ -1,1 +1,1 @@
-# autostack
+![autostack logo](assets/autostack.png)
