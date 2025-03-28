@@ -1,0 +1,61 @@
+"use client"
+
+import Link from "next/link"
+import { usePathname } from "next/navigation"
+import { cn } from "@/lib/utils"
+
+export function MainNav() {
+  const pathname = usePathname()
+
+  return (
+    <nav className="flex items-center space-x-4 lg:space-x-6">
+      <Link
+        href="/dashboard"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-primary relative group",
+          pathname === "/dashboard" ? "text-primary" : "text-muted-foreground",
+        )}
+      >
+        Dashboard
+        {pathname === "/dashboard" && <span className="absolute -bottom-1 left-0 h-0.5 w-full bg-primary"></span>}
+        <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all duration-300 group-hover:w-full"></span>
+      </Link>
+      <Link
+        href="/catalog"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-primary relative group",
+          pathname === "/catalog" || pathname.startsWith("/install") ? "text-primary" : "text-muted-foreground",
+        )}
+      >
+        Software
+        {(pathname === "/catalog" || pathname.startsWith("/install")) && (
+          <span className="absolute -bottom-1 left-0 h-0.5 w-full bg-primary"></span>
+        )}
+        <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all duration-300 group-hover:w-full"></span>
+      </Link>
+      <Link
+        href="/servers"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-primary relative group",
+          pathname === "/servers" ? "text-primary" : "text-muted-foreground",
+        )}
+      >
+        Servers
+        {pathname === "/servers" && <span className="absolute -bottom-1 left-0 h-0.5 w-full bg-primary"></span>}
+        <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all duration-300 group-hover:w-full"></span>
+      </Link>
+      <Link
+        href="/settings"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-primary relative group",
+          pathname === "/settings" ? "text-primary" : "text-muted-foreground",
+        )}
+      >
+        Settings
+        {pathname === "/settings" && <span className="absolute -bottom-1 left-0 h-0.5 w-full bg-primary"></span>}
+        <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all duration-300 group-hover:w-full"></span>
+      </Link>
+    </nav>
+  )
+}
+
