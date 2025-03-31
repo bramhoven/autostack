@@ -1,48 +1,18 @@
+"use client"
+
 import Link from "next/link"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Server, Book, Code, HelpCircle } from "lucide-react"
+import { Book, Code, HelpCircle } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
+import { PublicHeader } from "@/components/public-header"
 
 export default function DocsPage() {
+  const { user, isLoading } = useAuth()
+
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold">
-            <div className="bg-gradient-to-r from-primary to-primary/70 p-1.5 rounded-md text-primary-foreground">
-              <Server className="h-5 w-5" />
-            </div>
-            <span className="text-xl">ServerSoft</span>
-          </div>
-          <nav className="hidden md:flex gap-6">
-            <Link href="/catalog" className="text-sm font-medium transition-colors hover:text-primary">
-              Software Catalog
-            </Link>
-            <Link href="/pricing" className="text-sm font-medium transition-colors hover:text-primary">
-              Pricing
-            </Link>
-            <Link href="/docs" className="text-sm font-medium transition-colors hover:text-primary">
-              Documentation
-            </Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost" size="sm" className="rounded-full px-4">
-                Log in
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button
-                size="sm"
-                className="rounded-full px-4 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300"
-              >
-                Sign up
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
       <main className="flex-1">
         <div className="container py-8 md:py-10">
           <div className="relative mb-10 overflow-hidden rounded-xl border bg-background p-8 shadow-lg">

@@ -1,14 +1,17 @@
+"use client"
+
 import Link from "next/link"
-import Image from "next/image"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Input } from "@/components/ui/input"
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Badge } from "@/components/ui/badge"
-import { Server, Search, ArrowRight, Database, Code, Box, Globe, FileText } from "lucide-react"
+import { Search, Loader2 } from "lucide-react"
+import { SoftwareGrid } from "@/components/software/software-grid"
+import type { SoftwareItem } from "@/components/software/software-card"
+import { useAuth } from "@/components/auth/auth-provider"
+import { PublicHeader } from "@/components/public-header"
 
 // Mock data for software catalog
-const softwareList = [
+const softwareList: SoftwareItem[] = [
   {
     id: 1,
     name: "Nginx",
@@ -83,62 +86,86 @@ const softwareList = [
   },
 ]
 
-const getCategoryIcon = (category: string) => {
-  switch (category) {
-    case "web-server":
-      return <Globe className="h-4 w-4" />
-    case "database":
-      return <Database className="h-4 w-4" />
-    case "runtime":
-      return <Code className="h-4 w-4" />
-    case "container":
-      return <Box className="h-4 w-4" />
-    case "cms":
-      return <FileText className="h-4 w-4" />
-    default:
-      return <Server className="h-4 w-4" />
-  }
-}
-
 export default function CatalogPage() {
+  const { user, isLoading } = useAuth()
+
+  const renderNavigation = () => {
+    if (user) {
+      return (
+        <>
+          <Link href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary">
+            Dashboard
+          </Link>
+          <Link href="/servers" className="text-sm font-medium transition-colors hover:text-primary">
+            Servers
+          </Link>
+          <Link href="/catalog" className="text-sm font-medium transition-colors hover:text-primary">
+            Software Catalog
+          </Link>
+        </>
+      )
+    }
+
+    return (
+      <>
+        <Link href="/catalog" className="text-sm font-medium transition-colors hover:text-primary">
+          Software Catalog
+        </Link>
+        <Link href="/pricing" className="text-sm font-medium transition-colors hover:text-primary">
+          Pricing
+        </Link>
+        <Link href="/docs" className="text-sm font-medium transition-colors hover:text-primary">
+          Documentation
+        </Link>
+      </>
+    )
+  }
+
+  const renderAuthButtons = () => {
+    if (isLoading) {
+      return (
+        <Button variant="ghost" size="sm" className="rounded-full px-4" disabled>
+          <Loader2 className="h-4 w-4 animate-spin mr-2" />
+          Loading...
+        </Button>
+      )
+    }
+
+    if (user) {
+      return (
+        <Link href="/dashboard">
+          <Button
+            size="sm"
+            className="rounded-full px-4 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300"
+          >
+            Dashboard
+          </Button>
+        </Link>
+      )
+    }
+
+    return (
+      <>
+        <Link href="/login">
+          <Button variant="ghost" size="sm" className="rounded-full px-4">
+            Log in
+          </Button>
+        </Link>
+        <Link href="/signup">
+          <Button
+            size="sm"
+            className="rounded-full px-4 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300"
+          >
+            Sign up
+          </Button>
+        </Link>
+      </>
+    )
+  }
+
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold">
-            <div className="bg-gradient-to-r from-primary to-primary/70 p-1.5 rounded-md text-primary-foreground">
-              <Server className="h-5 w-5" />
-            </div>
-            <span className="text-xl">ServerSoft</span>
-          </div>
-          <nav className="hidden md:flex gap-6">
-            <Link href="/catalog" className="text-sm font-medium transition-colors hover:text-primary">
-              Software Catalog
-            </Link>
-            <Link href="/pricing" className="text-sm font-medium transition-colors hover:text-primary">
-              Pricing
-            </Link>
-            <Link href="/docs" className="text-sm font-medium transition-colors hover:text-primary">
-              Documentation
-            </Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost" size="sm" className="rounded-full px-4">
-                Log in
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button
-                size="sm"
-                className="rounded-full px-4 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300"
-              >
-                Sign up
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
       <main className="flex-1">
         <div className="container py-8 md:py-10">
           <div className="relative mb-10 overflow-hidden rounded-xl border bg-background p-8 shadow-lg">
@@ -188,157 +215,23 @@ export default function CatalogPage() {
               </TabsTrigger>
             </TabsList>
             <TabsContent value="all" className="mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {softwareList.map((software) => (
-                  <Card
-                    key={software.id}
-                    className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-primary/10 hover:border-primary/30"
-                  >
-                    <CardHeader className="flex flex-row items-center gap-4 pb-2 relative">
-                      <div className="bg-gradient-to-br from-muted/80 to-muted/30 p-2 rounded-md border border-border/50 shadow-sm">
-                        <Image
-                          src={software.image || "/placeholder.svg"}
-                          alt={software.name}
-                          width={50}
-                          height={50}
-                          className="rounded-sm"
-                        />
-                      </div>
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          {software.name}
-                          {software.popular && (
-                            <Badge variant="secondary" className="ml-2 bg-primary/10 text-primary hover:bg-primary/20">
-                              Popular
-                            </Badge>
-                          )}
-                        </CardTitle>
-                        <CardDescription className="flex items-center gap-1">
-                          {getCategoryIcon(software.category)}
-                          <span className="capitalize">{software.category.replace("-", " ")}</span>
-                        </CardDescription>
-                      </div>
-                    </CardHeader>
-                    <CardContent>
-                      <p className="text-sm text-muted-foreground">{software.description}</p>
-                    </CardContent>
-                    <CardFooter className="bg-muted/30 border-t border-border/50">
-                      <Link href={`/install/${software.id}`} className="w-full">
-                        <Button className="w-full gap-1 group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
-                          Install
-                          <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                        </Button>
-                      </Link>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
+              <SoftwareGrid items={softwareList} />
             </TabsContent>
             <TabsContent value="web-server" className="mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {softwareList
-                  .filter((software) => software.category === "web-server")
-                  .map((software) => (
-                    <Card
-                      key={software.id}
-                      className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-primary/10 hover:border-primary/30"
-                    >
-                      <CardHeader className="flex flex-row items-center gap-4 pb-2">
-                        <div className="bg-gradient-to-br from-muted/80 to-muted/30 p-2 rounded-md border border-border/50 shadow-sm">
-                          <Image
-                            src={software.image || "/placeholder.svg"}
-                            alt={software.name}
-                            width={50}
-                            height={50}
-                            className="rounded-sm"
-                          />
-                        </div>
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            {software.name}
-                            {software.popular && (
-                              <Badge
-                                variant="secondary"
-                                className="ml-2 bg-primary/10 text-primary hover:bg-primary/20"
-                              >
-                                Popular
-                              </Badge>
-                            )}
-                          </CardTitle>
-                          <CardDescription className="flex items-center gap-1">
-                            {getCategoryIcon(software.category)}
-                            <span className="capitalize">{software.category.replace("-", " ")}</span>
-                          </CardDescription>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">{software.description}</p>
-                      </CardContent>
-                      <CardFooter className="bg-muted/30 border-t border-border/50">
-                        <Link href={`/install/${software.id}`} className="w-full">
-                          <Button className="w-full gap-1 group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
-                            Install
-                            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                          </Button>
-                        </Link>
-                      </CardFooter>
-                    </Card>
-                  ))}
-              </div>
+              <SoftwareGrid items={softwareList.filter((software) => software.category === "web-server")} />
             </TabsContent>
             <TabsContent value="database" className="mt-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {softwareList
-                  .filter((software) => software.category === "database")
-                  .map((software) => (
-                    <Card
-                      key={software.id}
-                      className="overflow-hidden group hover:shadow-lg transition-all duration-300 border-primary/10 hover:border-primary/30"
-                    >
-                      <CardHeader className="flex flex-row items-center gap-4 pb-2">
-                        <div className="bg-gradient-to-br from-muted/80 to-muted/30 p-2 rounded-md border border-border/50 shadow-sm">
-                          <Image
-                            src={software.image || "/placeholder.svg"}
-                            alt={software.name}
-                            width={50}
-                            height={50}
-                            className="rounded-sm"
-                          />
-                        </div>
-                        <div>
-                          <CardTitle className="flex items-center gap-2">
-                            {software.name}
-                            {software.popular && (
-                              <Badge
-                                variant="secondary"
-                                className="ml-2 bg-primary/10 text-primary hover:bg-primary/20"
-                              >
-                                Popular
-                              </Badge>
-                            )}
-                          </CardTitle>
-                          <CardDescription className="flex items-center gap-1">
-                            {getCategoryIcon(software.category)}
-                            <span className="capitalize">{software.category.replace("-", " ")}</span>
-                          </CardDescription>
-                        </div>
-                      </CardHeader>
-                      <CardContent>
-                        <p className="text-sm text-muted-foreground">{software.description}</p>
-                      </CardContent>
-                      <CardFooter className="bg-muted/30 border-t border-border/50">
-                        <Link href={`/install/${software.id}`} className="w-full">
-                          <Button className="w-full gap-1 group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
-                            Install
-                            <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
-                          </Button>
-                        </Link>
-                      </CardFooter>
-                    </Card>
-                  ))}
-              </div>
+              <SoftwareGrid items={softwareList.filter((software) => software.category === "database")} />
             </TabsContent>
-            {/* Other tabs would follow the same pattern */}
+            <TabsContent value="runtime" className="mt-6">
+              <SoftwareGrid items={softwareList.filter((software) => software.category === "runtime")} />
+            </TabsContent>
+            <TabsContent value="container" className="mt-6">
+              <SoftwareGrid items={softwareList.filter((software) => software.category === "container")} />
+            </TabsContent>
+            <TabsContent value="cms" className="mt-6">
+              <SoftwareGrid items={softwareList.filter((software) => software.category === "cms")} />
+            </TabsContent>
           </Tabs>
         </div>
       </main>

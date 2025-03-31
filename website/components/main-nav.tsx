@@ -37,11 +37,26 @@ export function MainNav() {
         href="/servers"
         className={cn(
           "text-sm font-medium transition-colors hover:text-primary relative group",
-          pathname === "/servers" ? "text-primary" : "text-muted-foreground",
+          pathname === "/servers" || pathname.startsWith("/servers/") ? "text-primary" : "text-muted-foreground",
         )}
       >
         Servers
-        {pathname === "/servers" && <span className="absolute -bottom-1 left-0 h-0.5 w-full bg-primary"></span>}
+        {(pathname === "/servers" || pathname.startsWith("/servers/")) && (
+          <span className="absolute -bottom-1 left-0 h-0.5 w-full bg-primary"></span>
+        )}
+        <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all duration-300 group-hover:w-full"></span>
+      </Link>
+      <Link
+        href="/software/install"
+        className={cn(
+          "text-sm font-medium transition-colors hover:text-primary relative group",
+          pathname === "/software/install" ? "text-primary" : "text-muted-foreground",
+        )}
+      >
+        Install Software
+        {pathname === "/software/install" && (
+          <span className="absolute -bottom-1 left-0 h-0.5 w-full bg-primary"></span>
+        )}
         <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all duration-300 group-hover:w-full"></span>
       </Link>
       <Link

@@ -11,7 +11,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
-import { LogOut, Settings, User } from "lucide-react"
+import { LogOut, Settings, User, CreditCard } from "lucide-react"
 import { useAuth } from "@/components/auth/auth-provider"
 import { useRouter } from "next/navigation"
 import { useToast } from "@/components/ui/use-toast"
@@ -62,9 +62,13 @@ export function UserNav() {
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuGroup>
-          <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/profile")}>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/account")}>
             <User className="mr-2 h-4 w-4" />
-            <span>Profile</span>
+            <span>Account</span>
+          </DropdownMenuItem>
+          <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/billing")}>
+            <CreditCard className="mr-2 h-4 w-4" />
+            <span>Billing</span>
           </DropdownMenuItem>
           <DropdownMenuItem className="cursor-pointer" onClick={() => router.push("/settings")}>
             <Settings className="mr-2 h-4 w-4" />

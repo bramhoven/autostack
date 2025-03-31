@@ -123,6 +123,102 @@ export interface Database {
           installed_at?: string
         }
       }
+      server_groups: {
+        Row: {
+          id: string
+          user_id: string
+          name: string
+          description: string | null
+          order_index: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          name: string
+          description?: string | null
+          order_index?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          name?: string
+          description?: string | null
+          order_index?: number
+          created_at?: string
+        }
+      }
+      server_group_members: {
+        Row: {
+          id: string
+          group_id: string
+          server_id: number
+          order_index: number
+          created_at: string
+        }
+        Insert: {
+          id?: string
+          group_id: string
+          server_id: number
+          order_index?: number
+          created_at?: string
+        }
+        Update: {
+          id?: string
+          group_id?: string
+          server_id?: number
+          order_index?: number
+          created_at?: string
+        }
+      }
+      user_settings: {
+        Row: {
+          user_id: string
+          theme: string
+          auto_refresh: boolean
+          refresh_interval: number
+          show_offline_servers: boolean
+          enable_notifications: boolean
+          compact_view: boolean
+          email_notifications: boolean
+          server_alerts: boolean
+          installation_updates: boolean
+          security_alerts: boolean
+          marketing_emails: boolean
+          updated_at: string
+        }
+        Insert: {
+          user_id: string
+          theme?: string
+          auto_refresh?: boolean
+          refresh_interval?: number
+          show_offline_servers?: boolean
+          enable_notifications?: boolean
+          compact_view?: boolean
+          email_notifications?: boolean
+          server_alerts?: boolean
+          installation_updates?: boolean
+          security_alerts?: boolean
+          marketing_emails?: boolean
+          updated_at?: string
+        }
+        Update: {
+          user_id?: string
+          theme?: string
+          auto_refresh?: boolean
+          refresh_interval?: number
+          show_offline_servers?: boolean
+          enable_notifications?: boolean
+          compact_view?: boolean
+          email_notifications?: boolean
+          server_alerts?: boolean
+          installation_updates?: boolean
+          security_alerts?: boolean
+          marketing_emails?: boolean
+          updated_at?: string
+        }
+      }
     }
     Views: {
       [_ in never]: never

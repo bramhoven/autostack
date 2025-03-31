@@ -1,46 +1,29 @@
+"use client"
+
 import Link from "next/link"
 import { Button } from "@/components/ui/button"
 import { ArrowRight, CheckCircle, Server, Shield, Zap, RefreshCw } from "lucide-react"
+import { useAuth } from "@/components/auth/auth-provider"
+import { useEffect, useState } from "react"
+import { PublicHeader } from "@/components/public-header"
 
 export default function Home() {
+  const [user, setUser] = useState(null)
+  const [isLoading, setIsLoading] = useState(true)
+  const auth = useAuth()
+
+  useEffect(() => {
+    const fetchData = async () => {
+      setUser(auth.user)
+      setIsLoading(auth.isLoading)
+    }
+
+    fetchData()
+  }, [auth.user, auth.isLoading])
+
   return (
     <div className="flex min-h-screen flex-col">
-      <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-        <div className="container flex h-16 items-center justify-between">
-          <div className="flex items-center gap-2 font-semibold">
-            <div className="bg-gradient-to-r from-primary to-primary/70 p-1.5 rounded-md text-primary-foreground">
-              <Server className="h-5 w-5" />
-            </div>
-            <span className="text-xl">ServerSoft</span>
-          </div>
-          <nav className="hidden md:flex gap-6">
-            <Link href="/catalog" className="text-sm font-medium transition-colors hover:text-primary">
-              Software Catalog
-            </Link>
-            <Link href="/pricing" className="text-sm font-medium transition-colors hover:text-primary">
-              Pricing
-            </Link>
-            <Link href="/docs" className="text-sm font-medium transition-colors hover:text-primary">
-              Documentation
-            </Link>
-          </nav>
-          <div className="flex items-center gap-4">
-            <Link href="/login">
-              <Button variant="ghost" size="sm" className="rounded-full px-4">
-                Log in
-              </Button>
-            </Link>
-            <Link href="/signup">
-              <Button
-                size="sm"
-                className="rounded-full px-4 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300"
-              >
-                Sign up
-              </Button>
-            </Link>
-          </div>
-        </div>
-      </header>
+      <PublicHeader />
       <main className="flex-1">
         <section className="w-full py-12 md:py-24 lg:py-32 xl:py-48 relative overflow-hidden">
           <div className="absolute inset-0 bg-gradient-to-br from-background via-background to-primary/5 z-0"></div>
