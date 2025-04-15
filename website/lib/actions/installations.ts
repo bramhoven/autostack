@@ -10,10 +10,10 @@ export async function getInstallations() {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -35,7 +35,7 @@ export async function getInstallations() {
         ip_address
       )
     `)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
 
   if (error) {
     console.error("Error fetching installations:", error)
@@ -49,10 +49,10 @@ export async function getInstallationById(id: number) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -75,7 +75,7 @@ export async function getInstallationById(id: number) {
       )
     `)
     .eq("id", id)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .single()
 
   if (error) {
@@ -94,10 +94,10 @@ export async function createInstallation(installation: {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -105,7 +105,7 @@ export async function createInstallation(installation: {
     .from("installations")
     .insert({
       ...installation,
-      user_id: session.user.id,
+      user_id: user.id,
       status: "running",
     })
     .select()
@@ -125,10 +125,10 @@ export async function updateInstallationStatus(id: number, status: string) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -136,7 +136,7 @@ export async function updateInstallationStatus(id: number, status: string) {
     .from("installations")
     .update({ status })
     .eq("id", id)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .select()
     .single()
 
@@ -154,14 +154,14 @@ export async function deleteInstallation(id: number) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
-  const { error } = await supabase.from("installations").delete().eq("id", id).eq("user_id", session.user.id)
+  const { error } = await supabase.from("installations").delete().eq("id", id).eq("user_id", user.id)
 
   if (error) {
     console.error(`Error deleting installation with id ${id}:`, error)

@@ -10,14 +10,14 @@ export async function getServers() {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
-  const { data, error } = await supabase.from("servers").select("*").eq("user_id", session.user.id).order("name")
+  const { data, error } = await supabase.from("servers").select("*").eq("user_id", user.id).order("name")
 
   if (error) {
     console.error("Error fetching servers:", error)
@@ -31,10 +31,10 @@ export async function getServerById(id: number) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -42,7 +42,7 @@ export async function getServerById(id: number) {
     .from("servers")
     .select("*")
     .eq("id", id)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .single()
 
   if (error) {
@@ -57,10 +57,10 @@ export async function createServer(server: Omit<Server, "id" | "user_id" | "crea
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -68,7 +68,7 @@ export async function createServer(server: Omit<Server, "id" | "user_id" | "crea
     .from("servers")
     .insert({
       ...server,
-      user_id: session.user.id,
+      user_id: user.id,
     })
     .select()
     .single()
@@ -88,10 +88,10 @@ export async function updateServer(id: number, server: Partial<Omit<Server, "id"
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -99,7 +99,7 @@ export async function updateServer(id: number, server: Partial<Omit<Server, "id"
     .from("servers")
     .update(server)
     .eq("id", id)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .select()
     .single()
 
@@ -119,14 +119,14 @@ export async function deleteServer(id: number) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
-  const { error } = await supabase.from("servers").delete().eq("id", id).eq("user_id", session.user.id)
+  const { error } = await supabase.from("servers").delete().eq("id", id).eq("user_id", user.id)
 
   if (error) {
     console.error(`Error deleting server with id ${id}:`, error)

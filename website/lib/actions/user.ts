@@ -12,10 +12,10 @@ export async function updateUserProfile(data: UserProfileData) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -46,10 +46,10 @@ export async function updateUserPassword(data: PasswordData) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -81,10 +81,10 @@ export async function updateNotificationSettings(settings: NotificationSettings)
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -92,7 +92,7 @@ export async function updateNotificationSettings(settings: NotificationSettings)
   const { data: existingSettings, error: checkError } = await supabase
     .from("user_settings")
     .select("user_id")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .single()
 
   if (checkError && checkError.code !== "PGRST116") {
@@ -116,7 +116,7 @@ export async function updateNotificationSettings(settings: NotificationSettings)
   if (!existingSettings) {
     // Insert new settings
     const { error: insertError } = await supabase.from("user_settings").insert({
-      user_id: session.user.id,
+      user_id: user.id,
       ...settingsData,
     })
     error = insertError
@@ -125,7 +125,7 @@ export async function updateNotificationSettings(settings: NotificationSettings)
     const { error: updateError } = await supabase
       .from("user_settings")
       .update(settingsData)
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
     error = updateError
   }
 

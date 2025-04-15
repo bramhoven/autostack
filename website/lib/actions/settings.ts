@@ -31,10 +31,10 @@ export async function getServerGroups() {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect("/login")
   }
 
@@ -42,7 +42,7 @@ export async function getServerGroups() {
   const { data: groups, error: groupsError } = await supabase
     .from("server_groups")
     .select("*")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .order("order_index")
 
   if (groupsError) {
@@ -86,10 +86,10 @@ export async function getUnassignedServers() {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect("/login")
   }
 
@@ -97,7 +97,7 @@ export async function getUnassignedServers() {
   const { data: servers, error: serversError } = await supabase
     .from("servers")
     .select("id")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
 
   if (serversError) {
     console.error("Error fetching servers:", serversError)
@@ -127,10 +127,10 @@ export async function createServerGroup(data: { name: string; description: strin
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect("/login")
   }
 
@@ -138,7 +138,7 @@ export async function createServerGroup(data: { name: string; description: strin
   const { data: maxOrder, error: maxOrderError } = await supabase
     .from("server_groups")
     .select("order_index")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .order("order_index", { ascending: false })
     .limit(1)
     .single()
@@ -149,7 +149,7 @@ export async function createServerGroup(data: { name: string; description: strin
   const { data: group, error } = await supabase
     .from("server_groups")
     .insert({
-      user_id: session.user.id,
+      user_id: user.id,
       name: data.name,
       description: data.description,
       order_index: nextOrderIndex,
@@ -170,10 +170,10 @@ export async function updateServerGroup(groupId: string, data: { name?: string; 
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect("/login")
   }
 
@@ -185,7 +185,7 @@ export async function updateServerGroup(groupId: string, data: { name?: string; 
       description: data.description,
     })
     .eq("id", groupId)
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
 
   if (error) {
     console.error("Error updating server group:", error)
@@ -200,15 +200,15 @@ export async function deleteServerGroup(groupId: string) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect("/login")
   }
 
   // Delete the group (members will be deleted via cascade)
-  const { error } = await supabase.from("server_groups").delete().eq("id", groupId).eq("user_id", session.user.id)
+  const { error } = await supabase.from("server_groups").delete().eq("id", groupId).eq("user_id", user.id)
 
   if (error) {
     console.error("Error deleting server group:", error)
@@ -223,16 +223,16 @@ export async function updateServerGroupOrder(groupIds: string[]) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect("/login")
   }
 
   // Update each group's order_index
   const updates = groupIds.map((id, index) =>
-    supabase.from("server_groups").update({ order_index: index }).eq("id", id).eq("user_id", session.user.id),
+    supabase.from("server_groups").update({ order_index: index }).eq("id", id).eq("user_id", user.id),
   )
 
   try {
@@ -248,10 +248,10 @@ export async function updateGroupServers(groupId: string, serverIds: number[]) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect("/login")
   }
 
@@ -287,15 +287,15 @@ export async function getUserSettings() {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect("/login")
   }
 
   // Get user settings or create default if not exists
-  const { data, error } = await supabase.from("user_settings").select("*").eq("user_id", session.user.id).single()
+  const { data, error } = await supabase.from("user_settings").select("*").eq("user_id", user.id).single()
 
   if (error && error.code !== "PGRST116") {
     // PGRST116 is "no rows returned" error
@@ -339,10 +339,10 @@ export async function updateGeneralSettings(settings: UserSettings) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     redirect("/login")
   }
 
@@ -350,7 +350,7 @@ export async function updateGeneralSettings(settings: UserSettings) {
   const { data, error: checkError } = await supabase
     .from("user_settings")
     .select("user_id")
-    .eq("user_id", session.user.id)
+    .eq("user_id", user.id)
     .single()
 
   if (checkError && checkError.code !== "PGRST116") {
@@ -363,7 +363,7 @@ export async function updateGeneralSettings(settings: UserSettings) {
   if (!data) {
     // Insert new settings
     const { error: insertError } = await supabase.from("user_settings").insert({
-      user_id: session.user.id,
+      user_id: user.id,
       theme: settings.theme,
       auto_refresh: settings.auto_refresh,
       refresh_interval: settings.refresh_interval,
@@ -396,7 +396,7 @@ export async function updateGeneralSettings(settings: UserSettings) {
         security_alerts: settings.security_alerts,
         marketing_emails: settings.marketing_emails,
       })
-      .eq("user_id", session.user.id)
+      .eq("user_id", user.id)
     error = updateError
   }
 
@@ -413,10 +413,10 @@ export async function createApiKey(data: { name: string; permissions: string[] }
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
@@ -430,10 +430,10 @@ export async function deleteApiKey(keyId: string) {
   const supabase = await createClient()
 
   const {
-    data: { session },
-  } = await supabase.auth.getSession()
+    data: { user },
+  } = await supabase.auth.getUser()
 
-  if (!session) {
+  if (!user) {
     throw new Error("Not authenticated")
   }
 
