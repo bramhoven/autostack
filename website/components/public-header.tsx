@@ -12,7 +12,7 @@ export function PublicHeader() {
     <header className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container flex h-16 items-center justify-between">
         <div className="flex items-center gap-2 font-semibold">
-          <div className="bg-gradient-to-r from-primary to-primary/70 p-1.5 rounded-md text-primary-foreground">
+          <div className="bg-accent-gradient p-1.5 rounded-md text-primary-foreground">
             <Server className="h-5 w-5" />
           </div>
           <span className="text-xl">ServerSoft</span>
@@ -23,11 +23,11 @@ export function PublicHeader() {
               <Link href="/dashboard" className="text-sm font-medium transition-colors hover:text-primary">
                 Dashboard
               </Link>
-              <Link href="/servers" className="text-sm font-medium transition-colors hover:text-primary">
-                Servers
-              </Link>
               <Link href="/catalog" className="text-sm font-medium transition-colors hover:text-primary">
                 Software Catalog
+              </Link>
+              <Link href="/docs" className="text-sm font-medium transition-colors hover:text-primary">
+                Documentation
               </Link>
             </>
           ) : (
@@ -54,7 +54,7 @@ export function PublicHeader() {
             <Link href="/dashboard">
               <Button
                 size="sm"
-                className="rounded-full px-4 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300"
+                className="rounded-full px-4 bg-accent-gradient hover:opacity-90 transition-all duration-300"
               >
                 Dashboard
               </Button>
@@ -69,7 +69,7 @@ export function PublicHeader() {
               <Link href="/signup">
                 <Button
                   size="sm"
-                  className="rounded-full px-4 bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 transition-all duration-300"
+                  className="rounded-full px-4 bg-accent-gradient hover:opacity-90 transition-all duration-300"
                 >
                   Sign up
                 </Button>
@@ -81,4 +81,3 @@ export function PublicHeader() {
     </header>
   )
 }
-

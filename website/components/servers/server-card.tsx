@@ -61,4 +61,3 @@ export function ServerCard({ server, softwareCount, onDelete }: ServerCardProps)
     </Card>
   )
 }
-

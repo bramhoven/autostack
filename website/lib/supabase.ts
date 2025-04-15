@@ -71,4 +71,3 @@ CREATE TABLE installations (
   installed_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 */
-

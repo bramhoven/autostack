@@ -1,24 +1,50 @@
 "use client"
 
-import Image from "next/image"
-import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { StatusBadge } from "@/components/ui/status-badge"
-import { MonitoringStats } from "@/components/ui/monitoring-stats"
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
-import { MoreVertical, RefreshCw, Trash2 } from "lucide-react"
-import type { Installation } from "@/lib/actions/installations"
-import type { Software } from "@/lib/actions/software"
-import type { Server } from "@/lib/actions/servers"
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu"
+import { MoreVertical, Copy, Edit, Trash, Server, CheckCircle, CircleSlash } from "lucide-react"
+import { Badge } from "@/components/ui/badge"
+import { Button } from "@/components/ui/button"
+import { useToast } from "@/components/ui/use-toast"
+import { useMutation, useQueryClient } from "@tanstack/react-query"
+import { useState } from "react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
+import { CopyButton } from "@/components/copy-button"
 
 interface InstallationCardProps {
-  installation: Installation
-  software: Software
-  server: Server
+  installation: any
+  software: any
+  server: any
   onUpdate: (id: number) => void
   onDelete: (id: number) => void
   onToggleStatus: (id: number, status: string) => void
   formatDate: (date: string) => string
+  hideServer?: boolean
+}
+
+// Dummy functions to simulate API calls
+const updateInstallation = async (data: any) => {
+  // Simulate API call
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  return { success: true, data }
+}
+
+const deleteInstallation = async (id: number) => {
+  // Simulate API call
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  return { success: true, id }
+}
+
+const toggleInstallationStatus = async (data: { id: number; status: string }) => {
+  // Simulate API call
+  await new Promise((resolve) => setTimeout(resolve, 500))
+  return { success: true, data }
 }
 
 export function InstallationCard({
@@ -29,79 +55,170 @@ export function InstallationCard({
   onDelete,
   onToggleStatus,
   formatDate,
+  hideServer,
 }: InstallationCardProps) {
+  const { toast } = useToast()
+  const queryClient = useQueryClient()
+  const [isPending, setIsPending] = useState(false)
+
+  const { mutate: updateInstallationMutation } = useMutation({
+    mutationFn: updateInstallation,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["installations"] })
+      toast({
+        title: "Success",
+        description: "Installation updated successfully",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to update installation: ${error.message}`,
+      })
+    },
+  })
+
+  const { mutate: deleteInstallationMutation } = useMutation({
+    mutationFn: deleteInstallation,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["installations"] })
+      toast({
+        title: "Success",
+        description: "Installation updated successfully",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to delete installation: ${error.message}`,
+      })
+    },
+  })
+
+  const { mutate: toggleStatusMutation } = useMutation({
+    mutationFn: toggleInstallationStatus,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["installations"] })
+      toast({
+        title: "Success",
+        description: "Installation status updated successfully",
+      })
+    },
+    onError: (error: any) => {
+      toast({
+        variant: "destructive",
+        title: "Error",
+        description: `Failed to update installation status: ${error.message}`,
+      })
+    },
+  })
+
+  const handleUpdate = (id: number) => {
+    onUpdate(id)
+  }
+
+  const handleDelete = (id: number) => {
+    onDelete(id)
+  }
+
+  const handleToggleStatus = (id: number, status: string) => {
+    setIsPending(true)
+    toggleStatusMutation(
+      { id, status },
+      {
+        onSettled: () => {
+          setIsPending(false)
+        },
+      },
+    )
+  }
+
   return (
-    <Card className="overflow-hidden group hover:shadow-xl transition-all duration-300 border-primary/10 hover:border-primary/30">
-      <CardHeader className="flex flex-row items-center gap-4 pb-2 bg-muted/30">
-        <div className="bg-gradient-to-br from-muted/80 to-muted/30 p-2 rounded-md border border-border/50 shadow-sm">
-          <Image
-            src={software.image_url || "/placeholder.svg?height=50&width=50"}
-            alt={software.name || "Software"}
-            width={50}
-            height={50}
-            className="rounded-sm"
-          />
-        </div>
-        <div className="flex-1">
-          <CardTitle className="flex items-center justify-between">
-            {software.name}
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon" className="h-8 w-8 rounded-full hover:bg-primary/10">
-                  <MoreVertical className="h-4 w-4" />
-                  <span className="sr-only">Actions</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                <DropdownMenuItem onClick={() => onUpdate(installation.id)} className="cursor-pointer">
-                  <RefreshCw className="mr-2 h-4 w-4" />
-                  Update
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive cursor-pointer"
-                  onClick={() => onDelete(installation.id)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Uninstall
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </CardTitle>
-          <CardDescription>Version {installation.version}</CardDescription>
+    <Card>
+      <CardHeader>
+        <div className="flex items-center justify-between">
+          <div>
+            <CardTitle>{installation.name}</CardTitle>
+            <CardDescription>
+              {software.name} - {installation.version}
+            </CardDescription>
+          </div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" className="h-8 w-8 p-0">
+                <span className="sr-only">Open menu</span>
+                <MoreVertical className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => handleUpdate(installation.id)}>
+                <Edit className="mr-2 h-4 w-4" /> Update
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleDelete(installation.id)}>
+                <Trash className="mr-2 h-4 w-4" /> Delete
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem>
+                <Copy className="mr-2 h-4 w-4" />
+                <CopyButton text={JSON.stringify(installation)} />
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </CardHeader>
-      <CardContent className="pt-4">
-        <div className="space-y-3 text-sm">
-          <div className="flex justify-between items-center">
-            <span className="text-muted-foreground">Status:</span>
-            <StatusBadge status={installation.status} />
+      <CardContent>
+        <div className="grid gap-4">
+          <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+            Created at {formatDate(installation.created_at)}
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Server:</span>
-            <span className="font-medium">{server.name}</span>
+          {!hideServer && (
+            <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
+              <Server className="h-3.5 w-3.5" />
+              <span>{server.name}</span>
+            </div>
+          )}
+          <div>
+            {installation.status === "active" ? (
+              <Badge variant="outline">
+                <CheckCircle className="mr-2 h-4 w-4" />
+                Active
+              </Badge>
+            ) : (
+              <Badge variant="destructive">
+                <CircleSlash className="mr-2 h-4 w-4" />
+                Inactive
+              </Badge>
+            )}
           </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">IP Address:</span>
-            <span className="font-mono text-xs bg-muted/50 px-2 py-0.5 rounded">{server.ip_address}</span>
-          </div>
-          <div className="flex justify-between">
-            <span className="text-muted-foreground">Installed:</span>
-            <span>{formatDate(installation.installed_at)}</span>
-          </div>
-
-          {installation.status === "running" && <MonitoringStats cpu={installation.cpu} memory={installation.memory} />}
+          {installation.notes ? (
+            <Alert>
+              <AlertTitle>Notes</AlertTitle>
+              <AlertDescription>{installation.notes}</AlertDescription>
+            </Alert>
+          ) : null}
         </div>
       </CardContent>
-      <CardFooter className="grid content-center bg-muted/30 border-t border-border/50 px-6 py-4">
-        <Button
-          variant={installation.status === "running" ? "outline" : "default"}
-          className="w-full rounded-full"
-          onClick={() => onToggleStatus(installation.id, installation.status)}
-        >
-          {installation.status === "running" ? "Stop" : "Start"}
-        </Button>
+      <CardFooter className="flex justify-between">
+        {installation.status === "active" ? (
+          <Button
+            variant="destructive"
+            onClick={() => handleToggleStatus(installation.id, "inactive")}
+            disabled={isPending}
+          >
+            Deactivate
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            onClick={() => handleToggleStatus(installation.id, "active")}
+            disabled={isPending}
+          >
+            Activate
+          </Button>
+        )}
       </CardFooter>
     </Card>
   )
 }
-

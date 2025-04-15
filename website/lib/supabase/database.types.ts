@@ -231,4 +231,3 @@ export interface Database {
     }
   }
 }
-

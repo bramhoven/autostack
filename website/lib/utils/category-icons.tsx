@@ -16,4 +16,3 @@ export function getCategoryIcon(category: string) {
       return <Server className="h-4 w-4" />
   }
 }
-

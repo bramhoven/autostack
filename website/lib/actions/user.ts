@@ -9,7 +9,7 @@ interface UserProfileData {
 }
 
 export async function updateUserProfile(data: UserProfileData) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -43,7 +43,7 @@ interface PasswordData {
 }
 
 export async function updateUserPassword(data: PasswordData) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -78,7 +78,7 @@ interface NotificationSettings {
 }
 
 export async function updateNotificationSettings(settings: NotificationSettings) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -138,4 +138,3 @@ export async function updateNotificationSettings(settings: NotificationSettings)
 
   return { success: true }
 }
-

@@ -13,4 +13,3 @@ export function SoftwareGrid({ items }: SoftwareGridProps) {
     </div>
   )
 }
-

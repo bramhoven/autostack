@@ -7,7 +7,7 @@ import type { Database } from "@/lib/supabase/database.types"
 export type Server = Database["public"]["Tables"]["servers"]["Row"]
 
 export async function getServers() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -28,7 +28,7 @@ export async function getServers() {
 }
 
 export async function getServerById(id: number) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -54,7 +54,7 @@ export async function getServerById(id: number) {
 }
 
 export async function createServer(server: Omit<Server, "id" | "user_id" | "created_at">) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -85,7 +85,7 @@ export async function createServer(server: Omit<Server, "id" | "user_id" | "crea
 }
 
 export async function updateServer(id: number, server: Partial<Omit<Server, "id" | "user_id" | "created_at">>) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -116,7 +116,7 @@ export async function updateServer(id: number, server: Partial<Omit<Server, "id"
 }
 
 export async function deleteServer(id: number) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -138,4 +138,3 @@ export async function deleteServer(id: number) {
 
   return { success: true }
 }
-

@@ -196,4 +196,3 @@ export function ServerMonitoring({ server }: ServerMonitoringProps) {
     </div>
   )
 }
-

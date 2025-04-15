@@ -28,7 +28,7 @@ export interface UserSettings {
 
 // Update the getServerGroups function to handle empty results better
 export async function getServerGroups() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -83,7 +83,7 @@ export async function getServerGroups() {
 
 // Update the getUnassignedServers function to handle empty results better
 export async function getUnassignedServers() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -124,7 +124,7 @@ export async function getUnassignedServers() {
 }
 
 export async function createServerGroup(data: { name: string; description: string | null }) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -167,7 +167,7 @@ export async function createServerGroup(data: { name: string; description: strin
 }
 
 export async function updateServerGroup(groupId: string, data: { name?: string; description?: string | null }) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -197,7 +197,7 @@ export async function updateServerGroup(groupId: string, data: { name?: string; 
 }
 
 export async function deleteServerGroup(groupId: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -220,7 +220,7 @@ export async function deleteServerGroup(groupId: string) {
 }
 
 export async function updateServerGroupOrder(groupIds: string[]) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -245,7 +245,7 @@ export async function updateServerGroupOrder(groupIds: string[]) {
 }
 
 export async function updateGroupServers(groupId: string, serverIds: number[]) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -284,7 +284,7 @@ export async function updateGroupServers(groupId: string, serverIds: number[]) {
 }
 
 export async function getUserSettings() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -336,7 +336,7 @@ export async function getUserSettings() {
 }
 
 export async function updateGeneralSettings(settings: UserSettings) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -410,7 +410,7 @@ export async function updateGeneralSettings(settings: UserSettings) {
 }
 
 export async function createApiKey(data: { name: string; permissions: string[] }) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -427,7 +427,7 @@ export async function createApiKey(data: { name: string; permissions: string[] }
 }
 
 export async function deleteApiKey(keyId: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -444,4 +444,3 @@ export async function deleteApiKey(keyId: string) {
 
   return { success: true }
 }
-

@@ -24,7 +24,7 @@ export function AuthForm({ type }: AuthFormProps) {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [name, setName] = useState("")
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
@@ -185,4 +185,3 @@ export function AuthForm({ type }: AuthFormProps) {
     </form>
   )
 }
-

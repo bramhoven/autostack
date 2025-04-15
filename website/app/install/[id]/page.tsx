@@ -285,4 +285,3 @@ export default function InstallPage({ params }: { params: { id: string } }) {
     </div>
   )
 }
-

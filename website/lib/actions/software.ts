@@ -8,7 +8,7 @@ export type Software = Database["public"]["Tables"]["software"]["Row"]
 // Update the getSoftware function to work without authentication
 
 export async function getSoftware() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // No authentication check needed for public software catalog
   const { data, error } = await supabase.from("software").select("*").order("name")
@@ -22,7 +22,7 @@ export async function getSoftware() {
 }
 
 export async function getSoftwareById(id: number) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // No authentication check needed for public software details
   const { data, error } = await supabase.from("software").select("*").eq("id", id).single()
@@ -36,7 +36,7 @@ export async function getSoftwareById(id: number) {
 }
 
 export async function getSoftwareByCategory(category: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   // No authentication check needed for public software by category
   const { data, error } = await supabase.from("software").select("*").eq("category", category).order("name")
@@ -48,4 +48,3 @@ export async function getSoftwareByCategory(category: string) {
 
   return data as Software[]
 }
-

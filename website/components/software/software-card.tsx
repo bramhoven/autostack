@@ -52,7 +52,10 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
       </CardContent>
       <CardFooter className="bg-muted/30 border-t border-border/50 flex items-center px-6 py-4">
         <Link href={`/install/${software.id}`} className="w-full">
-          <Button className="w-full gap-1 group-hover:bg-primary group-hover:text-primary-foreground transition-colors duration-300">
+          <Button
+            variant="outline"
+            className="w-full gap-1 border-primary/30 text-primary/80 hover:bg-primary/10 hover:border-primary/50 hover:text-primary transition-colors duration-300"
+          >
             Install
             <ArrowRight className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
           </Button>
@@ -61,4 +64,3 @@ export function SoftwareCard({ software }: SoftwareCardProps) {
     </Card>
   )
 }
-

@@ -106,4 +106,3 @@ VALUES
   ('MySQL', 'Open-source relational database management system', 'MySQL is an open-source relational database management system. Its name is a combination of "My", the name of co-founder Michael Widenius\'s daughter, and "SQL", the abbreviation for Structured Query Language.', 'database', '8.0.31', '/placeholder.svg?height=80&width=80', 'Linux server with at least 1GB RAM', false),
   
   ('WordPress', 'Content management system for websites and blogs', 'WordPress is a free and open-source content management system written in PHP and paired with a MySQL or MariaDB database. Features include a plugin architecture and a template system, referred to within WordPress as Themes.', 'cms', '6.1.1', '/placeholder.svg?height=80&width=80', 'Linux server with at least 1GB RAM, PHP 7.4+, MySQL/MariaDB', true);
-

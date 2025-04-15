@@ -21,19 +21,6 @@ export function MainNav() {
         <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all duration-300 group-hover:w-full"></span>
       </Link>
       <Link
-        href="/catalog"
-        className={cn(
-          "text-sm font-medium transition-colors hover:text-primary relative group",
-          pathname === "/catalog" || pathname.startsWith("/install") ? "text-primary" : "text-muted-foreground",
-        )}
-      >
-        Software
-        {(pathname === "/catalog" || pathname.startsWith("/install")) && (
-          <span className="absolute -bottom-1 left-0 h-0.5 w-full bg-primary"></span>
-        )}
-        <span className="absolute -bottom-1 left-0 h-0.5 w-0 bg-primary transition-all duration-300 group-hover:w-full"></span>
-      </Link>
-      <Link
         href="/servers"
         className={cn(
           "text-sm font-medium transition-colors hover:text-primary relative group",
@@ -73,4 +60,3 @@ export function MainNav() {
     </nav>
   )
 }
-

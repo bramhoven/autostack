@@ -10,12 +10,12 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     switch (status) {
       case "running":
       case "online":
-        return "text-green-500"
+        return "text-success"
       case "stopped":
       case "offline":
-        return "text-red-500"
+        return "text-error"
       default:
-        return "text-yellow-500"
+        return "text-warning"
     }
   }
 
@@ -23,12 +23,12 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     switch (status) {
       case "running":
       case "online":
-        return <CheckCircle2 className="h-4 w-4 text-green-500" />
+        return <CheckCircle2 className="h-4 w-4 text-success" />
       case "stopped":
       case "offline":
-        return <XCircle className="h-4 w-4 text-red-500" />
+        return <XCircle className="h-4 w-4 text-error" />
       default:
-        return <Clock className="h-4 w-4 text-yellow-500" />
+        return <Clock className="h-4 w-4 text-warning" />
     }
   }
 
@@ -39,4 +39,3 @@ export function StatusBadge({ status }: StatusBadgeProps) {
     </Badge>
   )
 }
-

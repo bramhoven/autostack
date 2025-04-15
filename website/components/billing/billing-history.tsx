@@ -42,11 +42,11 @@ export function BillingHistory() {
   const getStatusColor = (status: Invoice["status"]) => {
     switch (status) {
       case "paid":
-        return "text-green-600 bg-green-100"
+        return "text-success bg-success/10"
       case "pending":
-        return "text-yellow-600 bg-yellow-100"
+        return "text-warning bg-warning/10"
       case "failed":
-        return "text-red-600 bg-red-100"
+        return "text-error bg-error/10"
       default:
         return ""
     }
@@ -102,4 +102,3 @@ export function BillingHistory() {
     </Card>
   )
 }
-

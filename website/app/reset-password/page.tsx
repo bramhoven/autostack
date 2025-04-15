@@ -21,7 +21,7 @@ export default function ResetPasswordPage() {
   const [confirmPassword, setConfirmPassword] = useState("")
   const [isValidLink, setIsValidLink] = useState(false)
 
-  const supabase = createClient()
+  const supabase = await createClient()
 
   useEffect(() => {
     // Check if the reset password link is valid
@@ -169,4 +169,3 @@ export default function ResetPasswordPage() {
     </div>
   )
 }
-

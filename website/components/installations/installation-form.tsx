@@ -214,4 +214,3 @@ export function InstallationForm() {
     </form>
   )
 }
-

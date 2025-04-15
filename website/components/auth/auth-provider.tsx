@@ -34,8 +34,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
       try {
         const {
-          data: { session },
+          data: { user },
           error,
+        } = await supabase.auth.getUser()
+        const {
+          data: { session }
         } = await supabase.auth.getSession()
 
         if (error) {
@@ -43,7 +46,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         }
 
         setSession(session)
-        setUser(session?.user ?? null)
+        setUser(user ?? null)
       } catch (error) {
         console.error("Error getting session:", error)
       } finally {
@@ -85,4 +88,3 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>
 }
-

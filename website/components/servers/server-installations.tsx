@@ -131,4 +131,3 @@ export function ServerInstallations({ serverId }: ServerInstallationsProps) {
     </div>
   )
 }
-

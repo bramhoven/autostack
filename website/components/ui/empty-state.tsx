@@ -29,4 +29,3 @@ export function EmptyState({ icon, title, description, actionLabel, actionLink, 
     </div>
   )
 }
-

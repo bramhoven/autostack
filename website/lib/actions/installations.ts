@@ -7,7 +7,7 @@ import type { Database } from "@/lib/supabase/database.types"
 export type Installation = Database["public"]["Tables"]["installations"]["Row"]
 
 export async function getInstallations() {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -46,7 +46,7 @@ export async function getInstallations() {
 }
 
 export async function getInstallationById(id: number) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -91,7 +91,7 @@ export async function createInstallation(installation: {
   software_id: number
   version: string
 }) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -122,7 +122,7 @@ export async function createInstallation(installation: {
 }
 
 export async function updateInstallationStatus(id: number, status: string) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -151,7 +151,7 @@ export async function updateInstallationStatus(id: number, status: string) {
 }
 
 export async function deleteInstallation(id: number) {
-  const supabase = createClient()
+  const supabase = await createClient()
 
   const {
     data: { session },
@@ -172,4 +172,3 @@ export async function deleteInstallation(id: number) {
 
   return { success: true }
 }
-

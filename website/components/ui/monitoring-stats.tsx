@@ -50,4 +50,3 @@ export function MonitoringStats({ cpu, memory, disk }: MonitoringStatsProps) {
     </div>
   )
 }
-
