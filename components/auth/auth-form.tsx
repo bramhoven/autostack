@@ -128,12 +128,10 @@ export function AuthForm({ type }: AuthFormProps) {
             <Label htmlFor="password">Password</Label>
             {type === "login" && (
               <Button
+                type="button" // Explicitly set type to button to prevent form submission
                 variant="link"
                 className="p-0 h-auto text-xs text-primary hover:text-primary/80"
-                onClick={(e) => {
-                  e.preventDefault()
-                  router.push("/forgot-password")
-                }}
+                onClick={() => router.push("/forgot-password")}
               >
                 Forgot password?
               </Button>

@@ -38,12 +38,7 @@ export async function getServerById(id: number) {
     throw new Error("Not authenticated")
   }
 
-  const { data, error } = await supabase
-    .from("servers")
-    .select("*")
-    .eq("id", id)
-    .eq("user_id", user.id)
-    .single()
+  const { data, error } = await supabase.from("servers").select("*").eq("id", id).eq("user_id", user.id).single()
 
   if (error) {
     console.error(`Error fetching server with id ${id}:`, error)

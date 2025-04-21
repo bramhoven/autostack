@@ -11,7 +11,7 @@ const inter = Inter({ subsets: ["latin"] })
 export const metadata: Metadata = {
   title: "Server Software Installer",
   description: "Install and manage open source software on your servers",
-    generator: 'v0.dev'
+  generator: "v0.dev",
 }
 
 export default function RootLayout({
@@ -33,5 +33,4 @@ export default function RootLayout({
   )
 }
 
-
-import './globals.css'
+import "./globals.css"
