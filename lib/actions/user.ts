@@ -122,10 +122,7 @@ export async function updateNotificationSettings(settings: NotificationSettings)
     error = insertError
   } else {
     // Update existing settings
-    const { error: updateError } = await supabase
-      .from("user_settings")
-      .update(settingsData)
-      .eq("user_id", user.id)
+    const { error: updateError } = await supabase.from("user_settings").update(settingsData).eq("user_id", user.id)
     error = updateError
   }
 

@@ -94,10 +94,7 @@ export async function getUnassignedServers() {
   }
 
   // Get all servers for the user
-  const { data: servers, error: serversError } = await supabase
-    .from("servers")
-    .select("id")
-    .eq("user_id", user.id)
+  const { data: servers, error: serversError } = await supabase.from("servers").select("id").eq("user_id", user.id)
 
   if (serversError) {
     console.error("Error fetching servers:", serversError)
