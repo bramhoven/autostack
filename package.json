@@ -61,7 +61,8 @@
     "@supabase/supabase-js": "latest",
     "@tanstack/react-query": "latest",
     "@hello-pangea/dnd": "latest",
-    "@supabase/ssr": "latest"
+    "@supabase/ssr": "latest",
+    "@supabase/auth-helpers-nextjs": "latest"
   },
   "devDependencies": {
     "@types/node": "^22",
