@@ -1,5 +1,6 @@
 import Link from "next/link"
 import { ArrowLeft } from "lucide-react"
+import { Suspense } from "react"
 import { DashboardLayout } from "@/components/layouts/dashboard-layout"
 import { ServerForm } from "@/components/servers/server-form"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -22,7 +23,9 @@ export default function AddServerPage() {
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
           <div className="md:col-span-2">
-            <ServerForm />
+            <Suspense fallback={<div className="p-8 text-center">Loading server form...</div>}>
+              <ServerForm />
+            </Suspense>
           </div>
           <div>
             <Card className="border-primary/10 shadow-lg">
