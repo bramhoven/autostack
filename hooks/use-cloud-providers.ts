@@ -3,167 +3,82 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query"
 import {
   getCloudProviders,
-  getUserCloudProviderCredentials,
-  getCloudProviderCredentialById,
+  getCloudProviderCredentials,
+  getCloudProviderCredential,
   createCloudProviderCredential,
   updateCloudProviderCredential,
   deleteCloudProviderCredential,
 } from "@/lib/actions/cloud-providers"
-import { useToast } from "@/components/ui/use-toast"
+import type { Database } from "@/lib/supabase/database.types"
 
+type CloudProvider = Database["public"]["Tables"]["cloud_providers"]["Row"]
+type CloudProviderCredential = Database["public"]["Tables"]["cloud_provider_credentials"]["Row"]
+
+// Hook to fetch all cloud providers
 export function useCloudProviders() {
-  const {
-    data: providers,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["cloud-providers"],
+  return useQuery({
+    queryKey: ["cloudProviders"],
     queryFn: getCloudProviders,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   })
-
-  return {
-    providers,
-    isLoading,
-    error,
-  }
 }
 
+// Hook to fetch all cloud provider credentials for the current user
 export function useCloudProviderCredentials() {
-  const {
-    data: credentials,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["cloud-provider-credentials"],
-    queryFn: getUserCloudProviderCredentials,
+  return useQuery({
+    queryKey: ["cloudProviderCredentials"],
+    queryFn: getCloudProviderCredentials,
+    staleTime: 1000 * 60 * 5, // 5 minutes
   })
-
-  return {
-    credentials,
-    isLoading,
-    error,
-  }
 }
 
-export function useCloudProviderCredential(id: string) {
-  const {
-    data: credential,
-    isLoading,
-    error,
-  } = useQuery({
-    queryKey: ["cloud-provider-credential", id],
-    queryFn: () => getCloudProviderCredentialById(id),
+// Hook to fetch a specific cloud provider credential
+export function useCloudProviderCredential(id?: string, options = {}) {
+  return useQuery({
+    queryKey: ["cloudProviderCredential", id],
+    queryFn: () => (id ? getCloudProviderCredential(id) : null),
     enabled: !!id,
+    staleTime: 1000 * 60 * 5, // 5 minutes
+    ...options,
   })
-
-  return {
-    credential,
-    isLoading,
-    error,
-  }
 }
 
+// Hook to create a new cloud provider credential
 export function useCreateCloudProviderCredential() {
   const queryClient = useQueryClient()
-  const { toast } = useToast()
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: ({
-      providerId,
-      name,
-      credentials,
-      isDefault,
-    }: {
-      providerId: number
-      name: string
-      credentials: Record<string, any>
-      isDefault?: boolean
-    }) => createCloudProviderCredential(providerId, name, credentials, isDefault),
+  return useMutation({
+    mutationFn: createCloudProviderCredential,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cloud-provider-credentials"] })
-      toast({
-        title: "Success",
-        description: "Cloud provider credential created successfully",
-      })
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create cloud provider credential",
-        variant: "destructive",
-      })
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["cloudProviderCredentials"] })
     },
   })
-
-  return {
-    createCredential: mutate,
-    isCreating: isPending,
-  }
 }
 
+// Hook to update an existing cloud provider credential
 export function useUpdateCloudProviderCredential() {
   const queryClient = useQueryClient()
-  const { toast } = useToast()
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: ({
-      id,
-      updates,
-    }: {
-      id: string
-      updates: {
-        name?: string
-        credentials?: Record<string, any>
-        is_default?: boolean
-      }
-    }) => updateCloudProviderCredential(id, updates),
-    onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["cloud-provider-credentials"] })
-      queryClient.invalidateQueries({ queryKey: ["cloud-provider-credential", variables.id] })
-      toast({
-        title: "Success",
-        description: "Cloud provider credential updated successfully",
-      })
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update cloud provider credential",
-        variant: "destructive",
-      })
+  return useMutation({
+    mutationFn: updateCloudProviderCredential,
+    onSuccess: (data) => {
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["cloudProviderCredentials"] })
+      queryClient.invalidateQueries({ queryKey: ["cloudProviderCredential", data.id] })
     },
   })
-
-  return {
-    updateCredential: mutate,
-    isUpdating: isPending,
-  }
 }
 
+// Hook to delete a cloud provider credential
 export function useDeleteCloudProviderCredential() {
   const queryClient = useQueryClient()
-  const { toast } = useToast()
 
-  const { mutate, isPending } = useMutation({
-    mutationFn: (id: string) => deleteCloudProviderCredential(id),
+  return useMutation({
+    mutationFn: deleteCloudProviderCredential,
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["cloud-provider-credentials"] })
-      toast({
-        title: "Success",
-        description: "Cloud provider credential deleted successfully",
-      })
-    },
-    onError: (error) => {
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete cloud provider credential",
-        variant: "destructive",
-      })
+      // Invalidate queries to refetch data
+      queryClient.invalidateQueries({ queryKey: ["cloudProviderCredentials"] })
     },
   })
-
-  return {
-    deleteCredential: mutate,
-    isDeleting: isPending,
-  }
 }

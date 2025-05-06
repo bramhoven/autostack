@@ -219,67 +219,6 @@ export interface Database {
           updated_at?: string
         }
       }
-      cloud_providers: {
-        Row: {
-          id: number
-          name: string
-          slug: string
-          description: string | null
-          logo_url: string | null
-          is_active: boolean
-          created_at: string
-        }
-        Insert: {
-          id?: number
-          name: string
-          slug: string
-          description?: string | null
-          logo_url?: string | null
-          is_active?: boolean
-          created_at?: string
-        }
-        Update: {
-          id?: number
-          name?: string
-          slug?: string
-          description?: string | null
-          logo_url?: string | null
-          is_active?: boolean
-          created_at?: string
-        }
-      }
-      cloud_provider_credentials: {
-        Row: {
-          id: string
-          user_id: string
-          provider_id: number
-          name: string
-          credentials: Json
-          is_default: boolean
-          created_at: string
-          updated_at: string
-        }
-        Insert: {
-          id?: string
-          user_id: string
-          provider_id: number
-          name: string
-          credentials: Json
-          is_default?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-        Update: {
-          id?: string
-          user_id?: string
-          provider_id?: number
-          name?: string
-          credentials?: Json
-          is_default?: boolean
-          created_at?: string
-          updated_at?: string
-        }
-      }
     }
     Views: {
       [_ in never]: never
