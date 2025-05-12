@@ -25,7 +25,7 @@ export function CloudProvidersList() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false)
 
   // Fetch cloud provider credentials
-  const { data: credentials, isLoading, error } = useCloudProviderCredentials()
+  const { data: credentials, isLoading, error, refetch } = useCloudProviderCredentials()
 
   // Delete mutation
   const { mutate: deleteCredential, isPending: isDeleting } = useDeleteCloudProviderCredential()
@@ -67,12 +67,35 @@ export function CloudProvidersList() {
 
   // Show error state
   if (error) {
+    const errorMessage = error instanceof Error ? error.message : "Failed to load cloud provider credentials"
+
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>Failed to load cloud provider credentials. Please try again.</AlertDescription>
-      </Alert>
+      <Card>
+        <CardHeader>
+          <CardTitle>Error Loading Credentials</CardTitle>
+          <CardDescription>There was a problem loading your cloud provider credentials.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{errorMessage}</AlertDescription>
+          </Alert>
+          <p className="mt-4 text-sm text-muted-foreground">
+            This could be because the cloud provider tables haven't been created in your database yet. Please make sure
+            you've run the SQL migration script.
+          </p>
+        </CardContent>
+        <CardFooter className="flex justify-between">
+          <Button onClick={() => refetch()}>Try Again</Button>
+          <Link href="/cloud-providers/add">
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              Add Provider
+            </Button>
+          </Link>
+        </CardFooter>
+      </Card>
     )
   }
 

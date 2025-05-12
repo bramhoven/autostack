@@ -7,7 +7,7 @@ import { CloudProviderForm } from "./cloud-provider-form"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
-import { AlertCircle, ArrowLeft } from "lucide-react"
+import { AlertCircle, ArrowLeft, RefreshCcw } from "lucide-react"
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface ClientProviderFormProps {
@@ -19,27 +19,49 @@ export function ClientProviderForm({ credentialId }: ClientProviderFormProps) {
   const [error, setError] = useState<string | null>(null)
 
   // Fetch cloud providers
-  const { data: providers, isLoading: isLoadingProviders, error: providersError } = useCloudProviders()
+  const {
+    data: providers,
+    isLoading: isLoadingProviders,
+    error: providersError,
+    refetch: refetchProviders,
+  } = useCloudProviders()
 
   // Fetch credential if editing
   const {
     data: credential,
     isLoading: isLoadingCredential,
     error: credentialError,
+    refetch: refetchCredential,
   } = useCloudProviderCredential(credentialId)
 
   // Handle errors
   useEffect(() => {
     if (providersError) {
-      setError("Failed to load cloud providers. Please try again.")
+      const errorMessage =
+        providersError instanceof Error ? providersError.message : "Failed to load cloud providers. Please try again."
+
+      setError(errorMessage)
       console.error("Providers error:", providersError)
     } else if (credentialId && credentialError) {
-      setError("Failed to load credential details. Please try again.")
+      const errorMessage =
+        credentialError instanceof Error
+          ? credentialError.message
+          : "Failed to load credential details. Please try again."
+
+      setError(errorMessage)
       console.error("Credential error:", credentialError)
     } else {
       setError(null)
     }
   }, [providersError, credentialError, credentialId])
+
+  // Handle retry
+  const handleRetry = () => {
+    refetchProviders()
+    if (credentialId) {
+      refetchCredential()
+    }
+  }
 
   // Handle success
   const handleSuccess = () => {
@@ -80,16 +102,25 @@ export function ClientProviderForm({ credentialId }: ClientProviderFormProps) {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <Alert variant="destructive">
+          <Alert variant="destructive" className="mb-4">
             <AlertCircle className="h-4 w-4" />
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{error}</AlertDescription>
           </Alert>
+
+          <p className="text-sm text-muted-foreground mb-4">
+            This could be because the cloud provider tables haven't been created in your database yet. Please make sure
+            you've run the SQL migration script.
+          </p>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex justify-between">
           <Button onClick={() => router.push("/cloud-providers")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Cloud Providers
+            Back
+          </Button>
+          <Button onClick={handleRetry}>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Try Again
           </Button>
         </CardFooter>
       </Card>
@@ -106,13 +137,17 @@ export function ClientProviderForm({ credentialId }: ClientProviderFormProps) {
         </CardHeader>
         <CardContent>
           <p className="text-sm text-muted-foreground">
-            Please contact your administrator to add cloud providers to the system.
+            Please make sure you've run the SQL migration script to create the cloud provider tables and sample data.
           </p>
         </CardContent>
-        <CardFooter>
+        <CardFooter className="flex justify-between">
           <Button onClick={() => router.push("/cloud-providers")}>
             <ArrowLeft className="mr-2 h-4 w-4" />
-            Back to Cloud Providers
+            Back
+          </Button>
+          <Button onClick={handleRetry}>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Try Again
           </Button>
         </CardFooter>
       </Card>

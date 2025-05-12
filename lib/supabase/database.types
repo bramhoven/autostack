@@ -341,22 +341,37 @@ export interface Database {
           id: number
           name: string
           slug: string
-          logo_url: string
+          description: string | null
+          logo_url: string | null
+          provider_type: string
+          required_fields: Json
           is_active: boolean
+          created_at: string
+          updated_at: string
         }
         Insert: {
           id?: number
           name: string
           slug: string
-          logo_url: string
+          description?: string | null
+          logo_url?: string | null
+          provider_type: string
+          required_fields: Json
           is_active?: boolean
+          created_at?: string
+          updated_at?: string
         }
         Update: {
           id?: number
           name?: string
           slug?: string
-          logo_url?: string
+          description?: string | null
+          logo_url?: string | null
+          provider_type?: string
+          required_fields?: Json
           is_active?: boolean
+          created_at?: string
+          updated_at?: string
         }
       }
       cloud_provider_credentials: {
@@ -387,6 +402,53 @@ export interface Database {
           name?: string
           credentials?: Json
           is_default?: boolean
+          created_at?: string
+          updated_at?: string
+        }
+      }
+      cloud_servers: {
+        Row: {
+          id: string
+          user_id: string
+          credential_id: string
+          server_id: number | null
+          cloud_id: string
+          name: string
+          region: string
+          size: string
+          image: string
+          status: string
+          ip_address: string | null
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          credential_id: string
+          server_id?: number | null
+          cloud_id: string
+          name: string
+          region: string
+          size: string
+          image: string
+          status: string
+          ip_address?: string | null
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          credential_id?: string
+          server_id?: number | null
+          cloud_id?: string
+          name?: string
+          region?: string
+          size?: string
+          image?: string
+          status?: string
+          ip_address?: string | null
           created_at?: string
           updated_at?: string
         }

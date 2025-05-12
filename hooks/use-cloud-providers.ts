@@ -17,6 +17,7 @@ export function useCloudProviders() {
     queryKey: ["cloudProviders"],
     queryFn: getCloudProviders,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
   })
 }
 
@@ -26,6 +27,7 @@ export function useCloudProviderCredentials() {
     queryKey: ["cloudProviderCredentials"],
     queryFn: getCloudProviderCredentials,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
   })
 }
 
@@ -36,6 +38,7 @@ export function useCloudProviderCredential(id?: string) {
     queryFn: () => (id ? getCloudProviderCredential(id) : null),
     enabled: !!id,
     staleTime: 1000 * 60 * 5, // 5 minutes
+    retry: 1,
   })
 }
 
@@ -60,6 +63,7 @@ export function useCreateCloudProviderCredential() {
       })
     },
     onError: (error: Error) => {
+      console.error("Error creating cloud provider credential:", error)
       toast({
         title: "Error",
         description: error.message || "Failed to create cloud provider credential",
@@ -93,6 +97,7 @@ export function useUpdateCloudProviderCredential() {
       })
     },
     onError: (error: Error) => {
+      console.error("Error updating cloud provider credential:", error)
       toast({
         title: "Error",
         description: error.message || "Failed to update cloud provider credential",
@@ -118,6 +123,7 @@ export function useDeleteCloudProviderCredential() {
       })
     },
     onError: (error: Error) => {
+      console.error("Error deleting cloud provider credential:", error)
       toast({
         title: "Error",
         description: error.message || "Failed to delete cloud provider credential",
