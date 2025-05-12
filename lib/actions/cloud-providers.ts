@@ -33,14 +33,22 @@ export async function getCloudProviderCredentials(): Promise<any[]> {
   try {
     const supabase = createServerComponentClient<Database>({ cookies })
 
+    // Check if user is authenticated
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser()
-    if (!user) {
-      throw new Error("User not authenticated")
+
+    if (userError) {
+      console.error("Error getting user:", userError)
+      return []
     }
 
-    // First, check if the table exists
+    if (!user) {
+      console.log("User not authenticated")
+      return []
+    }
+
     try {
       const { data, error } = await supabase
         .from("cloud_provider_credentials")
@@ -64,7 +72,7 @@ export async function getCloudProviderCredentials(): Promise<any[]> {
 
       if (error) {
         console.error("Error fetching cloud provider credentials:", error)
-        throw new Error(`Failed to fetch cloud provider credentials: ${error.message}`)
+        return []
       }
 
       // Return data without attempting decryption if no credentials exist
@@ -161,12 +169,26 @@ export async function getCloudProviderCredentials(): Promise<any[]> {
 // Get a specific cloud provider credential by ID
 export async function getCloudProviderCredential(id: string): Promise<any> {
   try {
+    if (!id) {
+      console.log("No credential ID provided")
+      return null
+    }
+
     const supabase = createServerComponentClient<Database>({ cookies })
 
+    // Check if user is authenticated
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser()
+
+    if (userError) {
+      console.error("Error getting user:", userError)
+      throw new Error("Authentication error")
+    }
+
     if (!user) {
+      console.log("User not authenticated")
       throw new Error("User not authenticated")
     }
 
@@ -287,10 +309,19 @@ export async function createCloudProviderCredential(
   try {
     const supabase = createServerComponentClient<Database>({ cookies })
 
+    // Check if user is authenticated
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser()
+
+    if (userError) {
+      console.error("Error getting user:", userError)
+      throw new Error("Authentication error")
+    }
+
     if (!user) {
+      console.log("User not authenticated")
       throw new Error("User not authenticated")
     }
 
@@ -311,6 +342,10 @@ export async function createCloudProviderCredential(
     if (providerError) {
       console.error(`Error fetching cloud provider with id ${providerId}:`, providerError)
       throw new Error(`Failed to fetch cloud provider: ${providerError.message}`)
+    }
+
+    if (!provider) {
+      throw new Error(`Cloud provider with id ${providerId} not found`)
     }
 
     console.log("Provider slug:", provider.slug)
@@ -397,6 +432,10 @@ export async function createCloudProviderCredential(
         throw new Error(`Failed to create cloud provider credential: ${error.message}`)
       }
 
+      if (!data) {
+        throw new Error("Failed to create cloud provider credential: No data returned")
+      }
+
       console.log("Successfully created credential with ID:", data.id)
 
       revalidatePath("/cloud-providers")
@@ -429,10 +468,19 @@ export async function updateCloudProviderCredential(
   try {
     const supabase = createServerComponentClient<Database>({ cookies })
 
+    // Check if user is authenticated
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser()
+
+    if (userError) {
+      console.error("Error getting user:", userError)
+      throw new Error("Authentication error")
+    }
+
     if (!user) {
+      console.log("User not authenticated")
       throw new Error("User not authenticated")
     }
 
@@ -454,6 +502,10 @@ export async function updateCloudProviderCredential(
       throw new Error(`Failed to fetch cloud provider credential: ${credentialError.message}`)
     }
 
+    if (!currentCredential) {
+      throw new Error(`Cloud provider credential with id ${id} not found`)
+    }
+
     // Prepare updates
     const updateData: any = {}
 
@@ -466,12 +518,22 @@ export async function updateCloudProviderCredential(
 
       // If setting as default, unset any existing default for this provider
       if (updates.is_default) {
-        await supabase
-          .from("cloud_provider_credentials")
-          .update({ is_default: false })
-          .eq("user_id", user.id)
-          .eq("provider_id", currentCredential.provider_id)
-          .neq("id", id)
+        try {
+          const { error: updateError } = await supabase
+            .from("cloud_provider_credentials")
+            .update({ is_default: false })
+            .eq("user_id", user.id)
+            .eq("provider_id", currentCredential.provider_id)
+            .neq("id", id)
+
+          if (updateError) {
+            console.error("Error updating existing default credentials:", updateError)
+            // Continue anyway, this is not critical
+          }
+        } catch (error) {
+          console.error("Error updating existing default credentials:", error)
+          // Continue anyway, this is not critical
+        }
       }
     }
 
@@ -516,23 +578,35 @@ export async function updateCloudProviderCredential(
 
     updateData.updated_at = new Date().toISOString()
 
-    const { data, error } = await supabase
-      .from("cloud_provider_credentials")
-      .update(updateData)
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .select()
-      .single()
+    // Update the credential
+    try {
+      const { data, error } = await supabase
+        .from("cloud_provider_credentials")
+        .update(updateData)
+        .eq("id", id)
+        .eq("user_id", user.id)
+        .select()
+        .single()
 
-    if (error) {
-      console.error(`Error updating cloud provider credential with id ${id}:`, error)
-      throw new Error(`Failed to update cloud provider credential: ${error.message}`)
+      if (error) {
+        console.error(`Error updating cloud provider credential with id ${id}:`, error)
+        throw new Error(`Failed to update cloud provider credential: ${error.message}`)
+      }
+
+      if (!data) {
+        throw new Error("Failed to update cloud provider credential: No data returned")
+      }
+
+      revalidatePath("/cloud-providers")
+      revalidatePath("/servers/add")
+
+      return data
+    } catch (error) {
+      console.error("Error in database update:", error)
+      throw new Error(
+        `Failed to update cloud provider credential: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
-
-    revalidatePath("/cloud-providers")
-    revalidatePath("/servers/add")
-
-    return data
   } catch (error) {
     console.error("Error in updateCloudProviderCredential:", error)
     throw new Error(
@@ -546,10 +620,19 @@ export async function deleteCloudProviderCredential(id: string): Promise<{ succe
   try {
     const supabase = createServerComponentClient<Database>({ cookies })
 
+    // Check if user is authenticated
     const {
       data: { user },
+      error: userError,
     } = await supabase.auth.getUser()
+
+    if (userError) {
+      console.error("Error getting user:", userError)
+      throw new Error("Authentication error")
+    }
+
     if (!user) {
+      console.log("User not authenticated")
       throw new Error("User not authenticated")
     }
 

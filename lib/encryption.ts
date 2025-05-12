@@ -10,6 +10,10 @@ const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
 // Check if a string is already encrypted
 export function isEncrypted(text: string): boolean {
   try {
+    if (!text || typeof text !== "string") {
+      return false
+    }
+
     // Encrypted strings should be base64 and have a specific format
     const parts = text.split(":")
     return parts.length === 2 && parts[0].length === 32 && /^[A-Za-z0-9+/=]+$/.test(parts[1])
@@ -21,6 +25,11 @@ export function isEncrypted(text: string): boolean {
 // Encrypt a string using AES-256-CBC
 export function encrypt(text: string): string {
   try {
+    if (!text || typeof text !== "string") {
+      console.warn("Invalid text provided for encryption")
+      return text
+    }
+
     if (!ENCRYPTION_KEY) {
       console.warn("ENCRYPTION_KEY is not set. Using plaintext.")
       return text
@@ -32,7 +41,7 @@ export function encrypt(text: string): string {
     }
 
     // Create a buffer from the encryption key
-    const key = crypto.createHash("sha256").update(ENCRYPTION_KEY).digest()
+    const key = crypto.createHash("sha256").update(String(ENCRYPTION_KEY)).digest()
 
     // Generate a random initialization vector
     const iv = crypto.randomBytes(16)
@@ -56,6 +65,11 @@ export function encrypt(text: string): string {
 // Decrypt a string that was encrypted using AES-256-CBC
 export function decrypt(encryptedText: string): string {
   try {
+    if (!encryptedText || typeof encryptedText !== "string") {
+      console.warn("Invalid text provided for decryption")
+      return encryptedText
+    }
+
     if (!ENCRYPTION_KEY) {
       console.warn("ENCRYPTION_KEY is not set. Using plaintext.")
       return encryptedText
@@ -70,7 +84,7 @@ export function decrypt(encryptedText: string): string {
     const [ivHex, encrypted] = encryptedText.split(":")
 
     // Create a buffer from the encryption key
-    const key = crypto.createHash("sha256").update(ENCRYPTION_KEY).digest()
+    const key = crypto.createHash("sha256").update(String(ENCRYPTION_KEY)).digest()
 
     // Convert the IV from hex to buffer
     const iv = Buffer.from(ivHex, "hex")
