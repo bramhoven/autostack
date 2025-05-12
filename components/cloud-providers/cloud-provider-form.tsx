@@ -120,6 +120,18 @@ export function CloudProviderForm({ providers, credential, defaultProviderId, on
 
       console.log("Form data:", { name, providerId, providerType, credentials })
 
+      // Ensure providerId is a number
+      const providerIdNum = Number.parseInt(providerId, 10)
+      if (isNaN(providerIdNum)) {
+        setError(`Invalid provider ID: ${providerId}`)
+        toast({
+          title: "Error",
+          description: `Invalid provider ID: ${providerId}`,
+          variant: "destructive",
+        })
+        return
+      }
+
       if (credential) {
         // Update existing credential
         updateCredential(
@@ -154,7 +166,7 @@ export function CloudProviderForm({ providers, credential, defaultProviderId, on
         // Create new credential
         createCredential(
           {
-            providerId: Number.parseInt(providerId),
+            providerId: providerIdNum,
             name,
             credentials,
             isDefault,
