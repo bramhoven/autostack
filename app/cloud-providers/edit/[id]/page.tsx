@@ -7,11 +7,13 @@ import { PageHeader } from "@/components/ui/page-header"
 export default function EditCloudProviderPage({ params }: { params: { id: string } }) {
   return (
     <DashboardLayout>
-      <PageHeader heading="Edit Cloud Provider Credential" subheading="Update your cloud provider credentials" />
-      <div className="container mx-auto py-6">
-        <Suspense fallback={<ProviderFormSkeleton />}>
-          <ClientProviderForm credentialId={params.id} />
-        </Suspense>
+      <div className="container py-6">
+        <PageHeader heading="Edit Cloud Provider Credential" subheading="Update your cloud provider credentials" />
+        <div className="mt-6">
+          <Suspense fallback={<ProviderFormSkeleton />}>
+            <ClientProviderForm credentialId={params.id} />
+          </Suspense>
+        </div>
       </div>
     </DashboardLayout>
   )

@@ -7,14 +7,16 @@ import { PageHeader } from "@/components/ui/page-header"
 export default function AddCloudProviderPage() {
   return (
     <DashboardLayout>
-      <PageHeader
-        heading="Add Cloud Provider Credential"
-        subheading="Connect your cloud provider to manage your infrastructure"
-      />
-      <div className="container mx-auto py-6">
-        <Suspense fallback={<ProviderFormSkeleton />}>
-          <ClientProviderForm />
-        </Suspense>
+      <div className="container py-6">
+        <PageHeader
+          heading="Add Cloud Provider Credential"
+          subheading="Connect your cloud provider to manage your infrastructure"
+        />
+        <div className="mt-6">
+          <Suspense fallback={<ProviderFormSkeleton />}>
+            <ClientProviderForm />
+          </Suspense>
+        </div>
       </div>
     </DashboardLayout>
   )
