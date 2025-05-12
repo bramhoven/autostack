@@ -41,84 +41,120 @@ export async function getCloudProviderCredentials(): Promise<any[]> {
     }
 
     // First, check if the table exists
-    const { data: tableExists, error: tableCheckError } = await supabase
-      .from("cloud_provider_credentials")
-      .select("id")
-      .limit(1)
-      .maybeSingle()
-
-    if (tableCheckError && tableCheckError.code === "42P01") {
-      console.error("Table 'cloud_provider_credentials' does not exist:", tableCheckError)
-      return [] // Return empty array if table doesn't exist yet
-    }
-
-    const { data, error } = await supabase
-      .from("cloud_provider_credentials")
-      .select(`
-        *,
-        cloud_providers (
+    try {
+      const { data, error } = await supabase
+        .from("cloud_provider_credentials")
+        .select(`
           id,
           name,
-          slug,
-          logo_url
-        )
-      `)
-      .eq("user_id", user.id)
-      .order("created_at", { ascending: false })
+          provider_id,
+          credentials,
+          is_default,
+          created_at,
+          updated_at,
+          cloud_providers (
+            id,
+            name,
+            slug,
+            logo_url
+          )
+        `)
+        .eq("user_id", user.id)
+        .order("created_at", { ascending: false })
 
-    if (error) {
-      console.error("Error fetching cloud provider credentials:", error)
-      throw new Error(`Failed to fetch cloud provider credentials: ${error.message}`)
-    }
-
-    // Decrypt sensitive credentials
-    const decryptedData = data.map((credential) => {
-      try {
-        const decryptedCredentials = { ...credential.credentials }
-
-        // Decrypt sensitive fields based on provider type
-        if (credential.cloud_providers?.slug === "aws") {
-          if (decryptedCredentials.aws_secret_access_key) {
-            decryptedCredentials.aws_secret_access_key = decrypt(decryptedCredentials.aws_secret_access_key as string)
-          }
-        } else if (credential.cloud_providers?.slug === "digitalocean") {
-          if (decryptedCredentials.api_token) {
-            decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
-          }
-        } else if (credential.cloud_providers?.slug === "gcp") {
-          if (decryptedCredentials.private_key) {
-            decryptedCredentials.private_key = decrypt(decryptedCredentials.private_key as string)
-          }
-        } else if (credential.cloud_providers?.slug === "azure") {
-          if (decryptedCredentials.client_secret) {
-            decryptedCredentials.client_secret = decrypt(decryptedCredentials.client_secret as string)
-          }
-        } else if (credential.cloud_providers?.slug === "linode") {
-          if (decryptedCredentials.api_token) {
-            decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
-          }
-        } else if (credential.cloud_providers?.slug === "vultr") {
-          if (decryptedCredentials.api_key) {
-            decryptedCredentials.api_key = decrypt(decryptedCredentials.api_key as string)
-          }
-        }
-
-        return {
-          ...credential,
-          credentials: decryptedCredentials,
-        }
-      } catch (error) {
-        console.error("Error decrypting credentials:", error)
-        return credential // Return original credential if decryption fails
+      if (error) {
+        console.error("Error fetching cloud provider credentials:", error)
+        throw new Error(`Failed to fetch cloud provider credentials: ${error.message}`)
       }
-    })
 
-    return decryptedData || []
+      // Return data without attempting decryption if no credentials exist
+      if (!data || data.length === 0) {
+        return []
+      }
+
+      // Process each credential safely
+      const processedData = data.map((credential) => {
+        try {
+          // Skip decryption if credentials is null or not an object
+          if (!credential.credentials || typeof credential.credentials !== "object") {
+            return credential
+          }
+
+          const decryptedCredentials = { ...credential.credentials }
+
+          // Only attempt to decrypt if the provider slug exists and the field exists
+          if (credential.cloud_providers?.slug === "aws") {
+            if (decryptedCredentials.aws_secret_access_key) {
+              try {
+                decryptedCredentials.aws_secret_access_key = decrypt(
+                  decryptedCredentials.aws_secret_access_key as string,
+                )
+              } catch (e) {
+                console.error("Failed to decrypt AWS secret key:", e)
+                // Keep the encrypted value if decryption fails
+              }
+            }
+          } else if (credential.cloud_providers?.slug === "digitalocean") {
+            if (decryptedCredentials.api_token) {
+              try {
+                decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
+              } catch (e) {
+                console.error("Failed to decrypt DigitalOcean API token:", e)
+              }
+            }
+          } else if (credential.cloud_providers?.slug === "gcp") {
+            if (decryptedCredentials.private_key) {
+              try {
+                decryptedCredentials.private_key = decrypt(decryptedCredentials.private_key as string)
+              } catch (e) {
+                console.error("Failed to decrypt GCP private key:", e)
+              }
+            }
+          } else if (credential.cloud_providers?.slug === "azure") {
+            if (decryptedCredentials.client_secret) {
+              try {
+                decryptedCredentials.client_secret = decrypt(decryptedCredentials.client_secret as string)
+              } catch (e) {
+                console.error("Failed to decrypt Azure client secret:", e)
+              }
+            }
+          } else if (credential.cloud_providers?.slug === "linode") {
+            if (decryptedCredentials.api_token) {
+              try {
+                decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
+              } catch (e) {
+                console.error("Failed to decrypt Linode API token:", e)
+              }
+            }
+          } else if (credential.cloud_providers?.slug === "vultr") {
+            if (decryptedCredentials.api_key) {
+              try {
+                decryptedCredentials.api_key = decrypt(decryptedCredentials.api_key as string)
+              } catch (e) {
+                console.error("Failed to decrypt Vultr API key:", e)
+              }
+            }
+          }
+
+          return {
+            ...credential,
+            credentials: decryptedCredentials,
+          }
+        } catch (error) {
+          console.error("Error processing credential:", error)
+          // Return the original credential if there's an error
+          return credential
+        }
+      })
+
+      return processedData
+    } catch (error) {
+      console.error("Error in database query:", error)
+      return [] // Return empty array on error
+    }
   } catch (error) {
     console.error("Error in getCloudProviderCredentials:", error)
-    throw new Error(
-      `Failed to fetch cloud provider credentials: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    return [] // Return empty array on error
   }
 }
 
@@ -137,7 +173,13 @@ export async function getCloudProviderCredential(id: string): Promise<any> {
     const { data, error } = await supabase
       .from("cloud_provider_credentials")
       .select(`
-        *,
+        id,
+        name,
+        provider_id,
+        credentials,
+        is_default,
+        created_at,
+        updated_at,
         cloud_providers (
           id,
           name,
@@ -154,34 +196,68 @@ export async function getCloudProviderCredential(id: string): Promise<any> {
       throw new Error(`Failed to fetch cloud provider credential: ${error.message}`)
     }
 
+    if (!data) {
+      throw new Error("Cloud provider credential not found")
+    }
+
+    // Skip decryption if credentials is null or not an object
+    if (!data.credentials || typeof data.credentials !== "object") {
+      return data
+    }
+
     // Decrypt sensitive credentials
     try {
       const decryptedCredentials = { ...data.credentials }
 
-      // Decrypt sensitive fields based on provider type
+      // Only attempt to decrypt if the provider slug exists and the field exists
       if (data.cloud_providers?.slug === "aws") {
         if (decryptedCredentials.aws_secret_access_key) {
-          decryptedCredentials.aws_secret_access_key = decrypt(decryptedCredentials.aws_secret_access_key as string)
+          try {
+            decryptedCredentials.aws_secret_access_key = decrypt(decryptedCredentials.aws_secret_access_key as string)
+          } catch (e) {
+            console.error("Failed to decrypt AWS secret key:", e)
+            // Keep the encrypted value if decryption fails
+          }
         }
       } else if (data.cloud_providers?.slug === "digitalocean") {
         if (decryptedCredentials.api_token) {
-          decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
+          try {
+            decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
+          } catch (e) {
+            console.error("Failed to decrypt DigitalOcean API token:", e)
+          }
         }
       } else if (data.cloud_providers?.slug === "gcp") {
         if (decryptedCredentials.private_key) {
-          decryptedCredentials.private_key = decrypt(decryptedCredentials.private_key as string)
+          try {
+            decryptedCredentials.private_key = decrypt(decryptedCredentials.private_key as string)
+          } catch (e) {
+            console.error("Failed to decrypt GCP private key:", e)
+          }
         }
       } else if (data.cloud_providers?.slug === "azure") {
         if (decryptedCredentials.client_secret) {
-          decryptedCredentials.client_secret = decrypt(decryptedCredentials.client_secret as string)
+          try {
+            decryptedCredentials.client_secret = decrypt(decryptedCredentials.client_secret as string)
+          } catch (e) {
+            console.error("Failed to decrypt Azure client secret:", e)
+          }
         }
       } else if (data.cloud_providers?.slug === "linode") {
         if (decryptedCredentials.api_token) {
-          decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
+          try {
+            decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
+          } catch (e) {
+            console.error("Failed to decrypt Linode API token:", e)
+          }
         }
       } else if (data.cloud_providers?.slug === "vultr") {
         if (decryptedCredentials.api_key) {
-          decryptedCredentials.api_key = decrypt(decryptedCredentials.api_key as string)
+          try {
+            decryptedCredentials.api_key = decrypt(decryptedCredentials.api_key as string)
+          } catch (e) {
+            console.error("Failed to decrypt Vultr API key:", e)
+          }
         }
       }
 

@@ -165,7 +165,7 @@ export function CloudProvidersList() {
               <p>
                 <strong>Provider:</strong> {credential.cloud_providers?.name || "Unknown"}
               </p>
-              {credential.cloud_providers?.slug === "aws" && (
+              {credential.cloud_providers?.slug === "aws" && credential.credentials && (
                 <p>
                   <strong>Region:</strong> {credential.credentials.aws_region || "N/A"}
                 </p>
