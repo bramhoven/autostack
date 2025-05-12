@@ -30,13 +30,12 @@ export function useCloudProviderCredentials() {
 }
 
 // Hook to fetch a specific cloud provider credential
-export function useCloudProviderCredential(id?: string, options = {}) {
+export function useCloudProviderCredential(id?: string) {
   return useQuery({
     queryKey: ["cloudProviderCredential", id],
     queryFn: () => (id ? getCloudProviderCredential(id) : null),
     enabled: !!id,
     staleTime: 1000 * 60 * 5, // 5 minutes
-    ...options,
   })
 }
 

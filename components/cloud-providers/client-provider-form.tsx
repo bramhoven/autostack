@@ -1,89 +1,124 @@
 "use client"
 
-import { useState, useEffect } from "react"
+import { useEffect, useState } from "react"
 import { useRouter } from "next/navigation"
-import { CloudProviderForm } from "./cloud-provider-form"
 import { useCloudProviders, useCloudProviderCredential } from "@/hooks/use-cloud-providers"
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
-import { AlertCircle } from "lucide-react"
+import { CloudProviderForm } from "./cloud-provider-form"
+import { Button } from "@/components/ui/button"
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
 import { Skeleton } from "@/components/ui/skeleton"
+import { AlertCircle, ArrowLeft } from "lucide-react"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 interface ClientProviderFormProps {
   credentialId?: string
-  defaultProviderId?: string
 }
 
-export function ClientProviderForm({ credentialId, defaultProviderId }: ClientProviderFormProps) {
+export function ClientProviderForm({ credentialId }: ClientProviderFormProps) {
   const router = useRouter()
+  const [error, setError] = useState<string | null>(null)
 
+  // Fetch cloud providers
   const { data: providers, isLoading: isLoadingProviders, error: providersError } = useCloudProviders()
 
+  // Fetch credential if editing
   const {
     data: credential,
     isLoading: isLoadingCredential,
     error: credentialError,
   } = useCloudProviderCredential(credentialId)
 
-  const [isLoading, setIsLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-
+  // Handle errors
   useEffect(() => {
-    // Set loading state based on data fetching
-    setIsLoading(isLoadingProviders || (credentialId ? isLoadingCredential : false))
-
-    // Handle errors
     if (providersError) {
       setError("Failed to load cloud providers. Please try again.")
-    } else if (credentialError && credentialId) {
-      setError("Failed to load cloud provider details. Please try again.")
+      console.error("Providers error:", providersError)
+    } else if (credentialId && credentialError) {
+      setError("Failed to load credential details. Please try again.")
+      console.error("Credential error:", credentialError)
     } else {
       setError(null)
     }
-  }, [isLoadingProviders, isLoadingCredential, providersError, credentialError, credentialId])
+  }, [providersError, credentialError, credentialId])
 
-  if (isLoading) {
+  // Handle success
+  const handleSuccess = () => {
+    router.push("/cloud-providers")
+  }
+
+  // Show loading state
+  if (isLoadingProviders || (credentialId && isLoadingCredential)) {
     return (
-      <div className="space-y-6">
-        <Skeleton className="h-8 w-full max-w-sm" />
-        <div className="space-y-4">
+      <Card>
+        <CardHeader>
+          <Skeleton className="h-8 w-64 mb-2" />
+          <Skeleton className="h-4 w-full" />
+        </CardHeader>
+        <CardContent className="space-y-4">
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-full" />
           <Skeleton className="h-10 w-2/3" />
-        </div>
-        <Skeleton className="h-10 w-32" />
-      </div>
+        </CardContent>
+        <CardFooter>
+          <Skeleton className="h-10 w-32" />
+        </CardFooter>
+      </Card>
     )
   }
 
+  // Show error state
   if (error) {
     return (
-      <Alert variant="destructive">
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>Error</AlertTitle>
-        <AlertDescription>{error}</AlertDescription>
-      </Alert>
+      <Card>
+        <CardHeader>
+          <CardTitle>{credentialId ? "Edit" : "Add"} Cloud Provider</CardTitle>
+          <CardDescription>
+            {credentialId
+              ? "Update your cloud provider credentials"
+              : "Connect your cloud provider to manage your infrastructure"}
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Alert variant="destructive">
+            <AlertCircle className="h-4 w-4" />
+            <AlertTitle>Error</AlertTitle>
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        </CardContent>
+        <CardFooter>
+          <Button onClick={() => router.push("/cloud-providers")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Cloud Providers
+          </Button>
+        </CardFooter>
+      </Card>
     )
   }
 
+  // Show empty state if no providers
   if (!providers || providers.length === 0) {
     return (
-      <Alert>
-        <AlertCircle className="h-4 w-4" />
-        <AlertTitle>No cloud providers available</AlertTitle>
-        <AlertDescription>
-          There are no cloud providers configured in the system. Please contact your administrator.
-        </AlertDescription>
-      </Alert>
+      <Card>
+        <CardHeader>
+          <CardTitle>No Cloud Providers Available</CardTitle>
+          <CardDescription>There are currently no cloud providers configured in the system.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <p className="text-sm text-muted-foreground">
+            Please contact your administrator to add cloud providers to the system.
+          </p>
+        </CardContent>
+        <CardFooter>
+          <Button onClick={() => router.push("/cloud-providers")}>
+            <ArrowLeft className="mr-2 h-4 w-4" />
+            Back to Cloud Providers
+          </Button>
+        </CardFooter>
+      </Card>
     )
   }
 
-  return (
-    <CloudProviderForm
-      providers={providers}
-      credential={credential}
-      defaultProviderId={defaultProviderId}
-      onSuccess={() => router.push("/cloud-providers")}
-    />
-  )
+  // Show form
+  return <CloudProviderForm providers={providers} credential={credential} onSuccess={handleSuccess} />
 }
