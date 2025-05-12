@@ -1,226 +1,192 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { zodResolver } from "@hookform/resolvers/zod"
 import { useForm } from "react-hook-form"
-import { z } from "zod"
-import { Button } from "@/components/ui/button"
+import { zodResolver } from "@hookform/resolvers/zod"
+import * as z from "zod"
+import { useRouter } from "next/navigation"
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card"
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
+import { Textarea } from "@/components/ui/textarea"
 import { useToast } from "@/components/ui/use-toast"
 import { useCreateCloudProviderCredential, useUpdateCloudProviderCredential } from "@/hooks/use-cloud-providers"
-import type { Database } from "@/lib/supabase/database.types"
+import { Loader2 } from "lucide-react"
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
 
-type CloudProvider = Database["public"]["Tables"]["cloud_providers"]["Row"]
-type CloudProviderCredential = Database["public"]["Tables"]["cloud_provider_credentials"]["Row"]
-
-// Define form schema based on provider type
-const awsSchema = z.object({
-  provider_id: z.string(),
+// Define the form schema based on provider type
+const baseSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  access_key: z.string().min(1, "Access Key is required"),
-  secret_key: z.string().min(1, "Secret Key is required"),
-  region: z.string().min(1, "Region is required"),
+  providerId: z.string().min(1, "Provider is required"),
 })
 
-const azureSchema = z.object({
-  provider_id: z.string(),
-  name: z.string().min(1, "Name is required"),
+const awsSchema = baseSchema.extend({
+  aws_access_key_id: z.string().min(1, "Access Key ID is required"),
+  aws_secret_access_key: z.string().min(1, "Secret Access Key is required"),
+  aws_region: z.string().min(1, "Region is required"),
+})
+
+const digitalOceanSchema = baseSchema.extend({
+  api_token: z.string().min(1, "API Token is required"),
+})
+
+const gcpSchema = baseSchema.extend({
+  project_id: z.string().min(1, "Project ID is required"),
+  client_email: z.string().email("Invalid email format"),
+  private_key: z.string().min(1, "Private Key is required"),
+})
+
+const azureSchema = baseSchema.extend({
   tenant_id: z.string().min(1, "Tenant ID is required"),
   client_id: z.string().min(1, "Client ID is required"),
   client_secret: z.string().min(1, "Client Secret is required"),
   subscription_id: z.string().min(1, "Subscription ID is required"),
 })
 
-const gcpSchema = z.object({
-  provider_id: z.string(),
-  name: z.string().min(1, "Name is required"),
-  project_id: z.string().min(1, "Project ID is required"),
-  service_account_key: z.string().min(1, "Service Account Key is required"),
-})
-
-const digitalOceanSchema = z.object({
-  provider_id: z.string(),
-  name: z.string().min(1, "Name is required"),
+const linodeSchema = baseSchema.extend({
   api_token: z.string().min(1, "API Token is required"),
 })
 
-// Union type for all provider schemas
-const formSchema = z.discriminatedUnion("provider_id", [awsSchema, azureSchema, gcpSchema, digitalOceanSchema])
+const vultrSchema = baseSchema.extend({
+  api_key: z.string().min(1, "API Key is required"),
+})
+
+// Define the form schema for each provider type
+const formSchema = z.discriminatedUnion("providerType", [
+  z.object({ providerType: z.literal("aws"), ...awsSchema.shape }),
+  z.object({ providerType: z.literal("digitalocean"), ...digitalOceanSchema.shape }),
+  z.object({ providerType: z.literal("gcp"), ...gcpSchema.shape }),
+  z.object({ providerType: z.literal("azure"), ...azureSchema.shape }),
+  z.object({ providerType: z.literal("linode"), ...linodeSchema.shape }),
+  z.object({ providerType: z.literal("vultr"), ...vultrSchema.shape }),
+])
+
+type FormValues = z.infer<typeof formSchema>
 
 interface CloudProviderFormProps {
-  providers: CloudProvider[]
-  credential?: CloudProviderCredential
-  defaultProvider?: string
+  providers: any[]
+  credential?: any
+  defaultProviderId?: string
   onSuccess?: () => void
 }
 
-export function CloudProviderForm({ providers, credential, defaultProvider, onSuccess }: CloudProviderFormProps) {
+export function CloudProviderForm({ providers, credential, defaultProviderId, onSuccess }: CloudProviderFormProps) {
+  const router = useRouter()
   const { toast } = useToast()
-  const [selectedProvider, setSelectedProvider] = useState<CloudProvider | null>(null)
+  const [selectedProvider, setSelectedProvider] = useState<string>(
+    credential?.cloud_provider_id?.toString() || defaultProviderId || "",
+  )
+  const [providerType, setProviderType] = useState<string>("")
+  const [isDefault, setIsDefault] = useState<boolean>(credential?.is_default || false)
 
-  const createMutation = useCreateCloudProviderCredential()
-  const updateMutation = useUpdateCloudProviderCredential()
+  const { mutate: createCredential, isPending: isCreating } = useCreateCloudProviderCredential()
+  const { mutate: updateCredential, isPending: isUpdating } = useUpdateCloudProviderCredential()
+
+  const isSubmitting = isCreating || isUpdating
 
   // Set up form with default values
-  const form = useForm<z.infer<typeof formSchema>>({
+  const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
-      provider_id: credential?.provider_id || defaultProvider || "",
       name: credential?.name || "",
-      // Other fields will be populated based on the selected provider
+      providerId: credential?.cloud_provider_id?.toString() || defaultProviderId || "",
+      providerType: providerType,
+      ...(credential?.credentials || {}),
     },
   })
 
-  // Update form when provider changes
+  // Update provider type when selected provider changes
   useEffect(() => {
-    const providerId = form.getValues("provider_id")
-    if (providerId) {
-      const provider = providers.find((p) => p.id === providerId)
-      setSelectedProvider(provider || null)
-    }
-  }, [form, providers])
-
-  // Update form when credential changes
-  useEffect(() => {
-    if (credential) {
-      // Reset form with credential values
-      form.reset({
-        provider_id: credential.provider_id,
-        name: credential.name,
-        ...(credential.credentials as any),
-      })
-
-      // Update selected provider
-      const provider = providers.find((p) => p.id === credential.provider_id)
-      setSelectedProvider(provider || null)
-    }
-  }, [credential, providers, form])
-
-  // Handle provider change
-  const handleProviderChange = (providerId: string) => {
-    const provider = providers.find((p) => p.id === providerId)
-    setSelectedProvider(provider || null)
-    form.setValue("provider_id", providerId)
-
-    // Reset provider-specific fields
-    if (provider) {
-      switch (provider.type) {
-        case "aws":
-          form.setValue("access_key", credential?.credentials?.access_key || "")
-          form.setValue("secret_key", credential?.credentials?.secret_key || "")
-          form.setValue("region", credential?.credentials?.region || "")
-          break
-        case "azure":
-          form.setValue("tenant_id", credential?.credentials?.tenant_id || "")
-          form.setValue("client_id", credential?.credentials?.client_id || "")
-          form.setValue("client_secret", credential?.credentials?.client_secret || "")
-          form.setValue("subscription_id", credential?.credentials?.subscription_id || "")
-          break
-        case "gcp":
-          form.setValue("project_id", credential?.credentials?.project_id || "")
-          form.setValue("service_account_key", credential?.credentials?.service_account_key || "")
-          break
-        case "digitalocean":
-          form.setValue("api_token", credential?.credentials?.api_token || "")
-          break
+    if (selectedProvider) {
+      const provider = providers.find((p) => p.id.toString() === selectedProvider)
+      if (provider) {
+        setProviderType(provider.slug)
+        form.setValue("providerType", provider.slug as any)
       }
     }
-  }
+  }, [selectedProvider, providers, form])
 
   // Handle form submission
-  const onSubmit = async (data: z.infer<typeof formSchema>) => {
-    try {
-      if (credential) {
-        // Update existing credential
-        await updateMutation.mutateAsync({
+  const onSubmit = (data: FormValues) => {
+    // Extract credentials based on provider type
+    const { name, providerId, providerType, ...credentials } = data
+
+    if (credential) {
+      // Update existing credential
+      updateCredential(
+        {
           id: credential.id,
-          provider_id: data.provider_id,
-          name: data.name,
-          credentials: getCredentialsFromData(data),
-        })
-        toast({
-          title: "Cloud provider updated",
-          description: "Your cloud provider credentials have been updated successfully.",
-        })
-      } else {
-        // Create new credential
-        await createMutation.mutateAsync({
-          provider_id: data.provider_id,
-          name: data.name,
-          credentials: getCredentialsFromData(data),
-        })
-        toast({
-          title: "Cloud provider added",
-          description: "Your cloud provider has been added successfully.",
-        })
-      }
-
-      // Call success callback
-      if (onSuccess) {
-        onSuccess()
-      }
-    } catch (error) {
-      console.error("Error saving cloud provider:", error)
-      toast({
-        title: "Error",
-        description: "There was an error saving your cloud provider. Please try again.",
-        variant: "destructive",
-      })
-    }
-  }
-
-  // Extract credentials from form data based on provider type
-  const getCredentialsFromData = (data: z.infer<typeof formSchema>) => {
-    if (!selectedProvider) return {}
-
-    switch (selectedProvider.type) {
-      case "aws":
-        return {
-          access_key: data.access_key,
-          secret_key: data.secret_key,
-          region: data.region,
-        }
-      case "azure":
-        return {
-          tenant_id: data.tenant_id,
-          client_id: data.client_id,
-          client_secret: data.client_secret,
-          subscription_id: data.subscription_id,
-        }
-      case "gcp":
-        return {
-          project_id: data.project_id,
-          service_account_key: data.service_account_key,
-        }
-      case "digitalocean":
-        return {
-          api_token: data.api_token,
-        }
-      default:
-        return {}
+          updates: {
+            name,
+            credentials,
+            is_default: isDefault,
+          },
+        },
+        {
+          onSuccess: () => {
+            toast({
+              title: "Success",
+              description: "Cloud provider credential updated successfully",
+            })
+            if (onSuccess) onSuccess()
+          },
+        },
+      )
+    } else {
+      // Create new credential
+      createCredential(
+        {
+          providerId: Number.parseInt(providerId),
+          name,
+          credentials,
+          isDefault,
+        },
+        {
+          onSuccess: () => {
+            toast({
+              title: "Success",
+              description: "Cloud provider credential created successfully",
+            })
+            if (onSuccess) onSuccess()
+          },
+        },
+      )
     }
   }
 
   return (
     <Card>
       <CardHeader>
-        <CardTitle>{credential ? "Edit Cloud Provider" : "Add Cloud Provider"}</CardTitle>
+        <CardTitle>{credential ? "Edit" : "Add"} Cloud Provider Credential</CardTitle>
         <CardDescription>
           {credential
-            ? "Update your cloud provider credentials"
-            : "Connect your cloud provider to manage your infrastructure"}
+            ? "Update your cloud provider credential details"
+            : "Add a new cloud provider credential to manage your cloud resources"}
         </CardDescription>
       </CardHeader>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
-            {/* Provider Selection */}
             <FormField
               control={form.control}
-              name="provider_id"
+              name="name"
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Credential Name</FormLabel>
+                  <FormControl>
+                    <Input placeholder="My AWS Account" {...field} />
+                  </FormControl>
+                  <FormDescription>A friendly name to identify this credential</FormDescription>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
+            <FormField
+              control={form.control}
+              name="providerId"
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Cloud Provider</FormLabel>
@@ -228,7 +194,7 @@ export function CloudProviderForm({ providers, credential, defaultProvider, onSu
                     disabled={!!credential}
                     onValueChange={(value) => {
                       field.onChange(value)
-                      handleProviderChange(value)
+                      setSelectedProvider(value)
                     }}
                     defaultValue={field.value}
                   >
@@ -239,43 +205,27 @@ export function CloudProviderForm({ providers, credential, defaultProvider, onSu
                     </FormControl>
                     <SelectContent>
                       {providers.map((provider) => (
-                        <SelectItem key={provider.id} value={provider.id}>
+                        <SelectItem key={provider.id} value={provider.id.toString()}>
                           {provider.name}
                         </SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <FormDescription>Select the cloud provider you want to connect to</FormDescription>
+                  <FormDescription>Select your cloud provider</FormDescription>
                   <FormMessage />
                 </FormItem>
               )}
             />
 
-            {/* Name Field */}
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="My AWS Account" {...field} />
-                  </FormControl>
-                  <FormDescription>A friendly name to identify this cloud provider</FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
-            {/* Provider-specific fields */}
-            {selectedProvider && selectedProvider.type === "aws" && (
+            {/* AWS Fields */}
+            {providerType === "aws" && (
               <>
                 <FormField
                   control={form.control}
-                  name="access_key"
+                  name="aws_access_key_id"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Access Key</FormLabel>
+                      <FormLabel>Access Key ID</FormLabel>
                       <FormControl>
                         <Input placeholder="AKIAIOSFODNN7EXAMPLE" {...field} />
                       </FormControl>
@@ -285,10 +235,10 @@ export function CloudProviderForm({ providers, credential, defaultProvider, onSu
                 />
                 <FormField
                   control={form.control}
-                  name="secret_key"
+                  name="aws_secret_access_key"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Secret Key</FormLabel>
+                      <FormLabel>Secret Access Key</FormLabel>
                       <FormControl>
                         <Input type="password" placeholder="wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY" {...field} />
                       </FormControl>
@@ -298,12 +248,91 @@ export function CloudProviderForm({ providers, credential, defaultProvider, onSu
                 />
                 <FormField
                   control={form.control}
-                  name="region"
+                  name="aws_region"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Region</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select a region" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="us-east-1">US East (N. Virginia)</SelectItem>
+                          <SelectItem value="us-east-2">US East (Ohio)</SelectItem>
+                          <SelectItem value="us-west-1">US West (N. California)</SelectItem>
+                          <SelectItem value="us-west-2">US West (Oregon)</SelectItem>
+                          <SelectItem value="eu-west-1">EU (Ireland)</SelectItem>
+                          <SelectItem value="eu-central-1">EU (Frankfurt)</SelectItem>
+                          <SelectItem value="ap-northeast-1">Asia Pacific (Tokyo)</SelectItem>
+                          <SelectItem value="ap-southeast-1">Asia Pacific (Singapore)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </>
+            )}
+
+            {/* DigitalOcean Fields */}
+            {providerType === "digitalocean" && (
+              <FormField
+                control={form.control}
+                name="api_token"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>API Token</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="dop_v1_..." {...field} />
+                    </FormControl>
+                    <FormDescription>
+                      Generate a token in the DigitalOcean control panel with read and write access
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            {/* GCP Fields */}
+            {providerType === "gcp" && (
+              <>
+                <FormField
+                  control={form.control}
+                  name="project_id"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Project ID</FormLabel>
                       <FormControl>
-                        <Input placeholder="us-west-2" {...field} />
+                        <Input placeholder="my-project-123" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="client_email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Client Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="service-account@my-project-123.iam.gserviceaccount.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="private_key"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Private Key</FormLabel>
+                      <FormControl>
+                        <Textarea placeholder="-----BEGIN PRIVATE KEY-----..." rows={5} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -312,7 +341,8 @@ export function CloudProviderForm({ providers, credential, defaultProvider, onSu
               </>
             )}
 
-            {selectedProvider && selectedProvider.type === "azure" && (
+            {/* Azure Fields */}
+            {providerType === "azure" && (
               <>
                 <FormField
                   control={form.control}
@@ -347,7 +377,7 @@ export function CloudProviderForm({ providers, credential, defaultProvider, onSu
                     <FormItem>
                       <FormLabel>Client Secret</FormLabel>
                       <FormControl>
-                        <Input type="password" placeholder="Your client secret" {...field} />
+                        <Input type="password" placeholder="..." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -369,43 +399,8 @@ export function CloudProviderForm({ providers, credential, defaultProvider, onSu
               </>
             )}
 
-            {selectedProvider && selectedProvider.type === "gcp" && (
-              <>
-                <FormField
-                  control={form.control}
-                  name="project_id"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Project ID</FormLabel>
-                      <FormControl>
-                        <Input placeholder="my-project-123" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="service_account_key"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Service Account Key (JSON)</FormLabel>
-                      <FormControl>
-                        <Input
-                          as="textarea"
-                          className="min-h-[100px]"
-                          placeholder="Paste your service account key JSON here"
-                          {...field}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </>
-            )}
-
-            {selectedProvider && selectedProvider.type === "digitalocean" && (
+            {/* Linode Fields */}
+            {providerType === "linode" && (
               <FormField
                 control={form.control}
                 name="api_token"
@@ -413,21 +408,51 @@ export function CloudProviderForm({ providers, credential, defaultProvider, onSu
                   <FormItem>
                     <FormLabel>API Token</FormLabel>
                     <FormControl>
-                      <Input type="password" placeholder="Your DigitalOcean API token" {...field} />
+                      <Input type="password" placeholder="..." {...field} />
                     </FormControl>
+                    <FormDescription>Generate a Personal Access Token in the Linode Cloud Manager</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}
               />
             )}
+
+            {/* Vultr Fields */}
+            {providerType === "vultr" && (
+              <FormField
+                control={form.control}
+                name="api_key"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>API Key</FormLabel>
+                    <FormControl>
+                      <Input type="password" placeholder="..." {...field} />
+                    </FormControl>
+                    <FormDescription>Generate an API Key in the Vultr Customer Portal</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            )}
+
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="is_default"
+                checked={isDefault}
+                onChange={(e) => setIsDefault(e.target.checked)}
+                className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+              />
+              <Label htmlFor="is_default">Set as default for this provider</Label>
+            </div>
           </CardContent>
-          <CardFooter>
-            <Button type="submit" disabled={createMutation.isPending || updateMutation.isPending}>
-              {createMutation.isPending || updateMutation.isPending
-                ? "Saving..."
-                : credential
-                  ? "Update Provider"
-                  : "Add Provider"}
+          <CardFooter className="flex justify-between">
+            <Button variant="outline" onClick={() => router.push("/cloud-providers")} disabled={isSubmitting}>
+              Cancel
+            </Button>
+            <Button type="submit" disabled={isSubmitting}>
+              {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+              {credential ? "Update" : "Add"} Credential
             </Button>
           </CardFooter>
         </form>
