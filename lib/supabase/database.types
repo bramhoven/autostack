@@ -336,7 +336,7 @@ export interface Database {
           created_at?: string
         }
       }
-      cloud_providers: {
+       cloud_providers: {
         Row: {
           id: number
           name: string

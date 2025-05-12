@@ -1,16 +1,22 @@
 import { Suspense } from "react"
 import { ClientProviderForm } from "@/components/cloud-providers/client-provider-form"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DashboardLayout } from "@/components/layouts/dashboard-layout"
+import { PageHeader } from "@/components/ui/page-header"
 
 export default function AddCloudProviderPage() {
-  // Get the provider type from the query string if available
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-2xl font-bold mb-6">Add Cloud Provider Credential</h1>
-      <Suspense fallback={<ProviderFormSkeleton />}>
-        <ClientProviderForm />
-      </Suspense>
-    </div>
+    <DashboardLayout>
+      <PageHeader
+        heading="Add Cloud Provider Credential"
+        subheading="Connect your cloud provider to manage your infrastructure"
+      />
+      <div className="container mx-auto py-6">
+        <Suspense fallback={<ProviderFormSkeleton />}>
+          <ClientProviderForm />
+        </Suspense>
+      </div>
+    </DashboardLayout>
   )
 }
 

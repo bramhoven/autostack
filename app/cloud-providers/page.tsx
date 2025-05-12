@@ -1,31 +1,43 @@
-import Link from "next/link"
 import { Suspense } from "react"
-import { DashboardLayout } from "@/components/layouts/dashboard-layout"
+import Link from "next/link"
 import { Button } from "@/components/ui/button"
+import { DashboardLayout } from "@/components/layouts/dashboard-layout"
+import { PageHeader } from "@/components/ui/page-header"
 import { CloudProvidersList } from "@/components/cloud-providers/cloud-providers-list"
-import { Plus } from "lucide-react"
+import { Skeleton } from "@/components/ui/skeleton"
+import { PlusCircle } from "lucide-react"
 
 export default function CloudProvidersPage() {
   return (
     <DashboardLayout>
-      <div className="container py-8">
-        <div className="flex justify-between items-center mb-8">
-          <div>
-            <h1 className="text-3xl font-bold tracking-tight">Cloud Providers</h1>
-            <p className="text-muted-foreground">Manage your cloud provider credentials</p>
-          </div>
+      <PageHeader
+        heading="Cloud Providers"
+        subheading="Manage your cloud provider credentials"
+        actions={
           <Link href="/cloud-providers/add">
             <Button>
-              <Plus className="mr-2 h-4 w-4" />
+              <PlusCircle className="mr-2 h-4 w-4" />
               Add Provider
             </Button>
           </Link>
-        </div>
-
-        <Suspense fallback={<div className="p-8 text-center">Loading cloud providers...</div>}>
+        }
+      />
+      <div className="container mx-auto py-6">
+        <Suspense fallback={<CloudProvidersListSkeleton />}>
           <CloudProvidersList />
         </Suspense>
       </div>
     </DashboardLayout>
+  )
+}
+
+function CloudProvidersListSkeleton() {
+  return (
+    <div className="space-y-4">
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-20 w-full" />
+      <Skeleton className="h-20 w-full" />
+      <Skeleton className="h-20 w-full" />
+    </div>
   )
 }

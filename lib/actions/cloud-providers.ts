@@ -1,656 +1,507 @@
 "use server"
 
-import { createServerComponentClient } from "@supabase/auth-helpers-nextjs"
+import { createServerClient } from "@supabase/ssr"
 import { cookies } from "next/headers"
 import { encrypt, decrypt } from "@/lib/encryption"
 import { revalidatePath } from "next/cache"
-import type { Database } from "@/lib/supabase/database.types"
 
-type CloudProvider = Database["public"]["Tables"]["cloud_providers"]["Row"]
-type CloudProviderCredential = Database["public"]["Tables"]["cloud_provider_credentials"]["Row"]
+// Types for cloud providers
+export type CloudProvider = {
+  id: string
+  name: string
+  type: string
+  fields: CloudProviderField[]
+}
 
-// Get all available cloud providers
+export type CloudProviderField = {
+  name: string
+  label: string
+  type: string
+  required: boolean
+  placeholder?: string
+  description?: string
+}
+
+// Types for cloud provider credentials
+export type CloudProviderCredential = {
+  id: string
+  name: string
+  provider_id: string
+  provider_name: string
+  provider_type: string
+  credentials: Record<string, string>
+  created_at: string
+}
+
+// Get all cloud providers
 export async function getCloudProviders(): Promise<CloudProvider[]> {
   try {
-    const supabase = createServerComponentClient<Database>({ cookies })
+    // Create a Supabase client
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is a server action, we don't need to set cookies
+          },
+          remove(name: string, options: any) {
+            // This is a server action, we don't need to remove cookies
+          },
+        },
+      },
+    )
 
-    const { data, error } = await supabase.from("cloud_providers").select("*").eq("is_active", true).order("name")
+    // Get the session
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) {
+      console.error("Session error:", sessionError.message)
+      throw new Error("Authentication failed")
+    }
+
+    if (!sessionData.session) {
+      throw new Error("Not authenticated")
+    }
+
+    // Get all cloud providers
+    const { data, error } = await supabase.from("cloud_providers").select("*")
 
     if (error) {
-      console.error("Error fetching cloud providers:", error)
-      throw new Error(`Failed to fetch cloud providers: ${error.message}`)
+      console.error("Error fetching cloud providers:", error.message)
+      throw new Error("Failed to fetch cloud providers")
     }
 
     return data || []
   } catch (error) {
     console.error("Error in getCloudProviders:", error)
-    throw new Error(`Failed to fetch cloud providers: ${error instanceof Error ? error.message : String(error)}`)
+    throw new Error(error instanceof Error ? error.message : "Failed to fetch cloud providers")
   }
 }
 
 // Get all cloud provider credentials for the current user
-export async function getCloudProviderCredentials(): Promise<any[]> {
+export async function getCloudProviderCredentials(): Promise<CloudProviderCredential[]> {
   try {
-    const supabase = createServerComponentClient<Database>({ cookies })
+    // Create a Supabase client
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is a server action, we don't need to set cookies
+          },
+          remove(name: string, options: any) {
+            // This is a server action, we don't need to remove cookies
+          },
+        },
+      },
+    )
 
-    // Check if user is authenticated
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError) {
-      console.error("Error getting user:", userError)
-      return []
+    // Get the session
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) {
+      console.error("Session error:", sessionError.message)
+      throw new Error("Authentication failed")
     }
 
-    if (!user) {
-      console.log("User not authenticated")
-      return []
+    if (!sessionData.session) {
+      throw new Error("Not authenticated")
     }
 
-    try {
-      const { data, error } = await supabase
-        .from("cloud_provider_credentials")
-        .select(`
-          id,
+    const userId = sessionData.session.user.id
+
+    // Get all cloud provider credentials for the current user
+    const { data, error } = await supabase
+      .from("cloud_provider_credentials")
+      .select(
+        `
+        *,
+        cloud_providers (
           name,
-          provider_id,
-          credentials,
-          is_default,
-          created_at,
-          updated_at,
-          cloud_providers (
-            id,
-            name,
-            slug,
-            logo_url
-          )
-        `)
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
+          type
+        )
+      `,
+      )
+      .eq("user_id", userId)
 
-      if (error) {
-        console.error("Error fetching cloud provider credentials:", error)
-        return []
-      }
+    if (error) {
+      console.error("Error fetching cloud provider credentials:", error.message)
+      throw new Error("Failed to fetch cloud provider credentials")
+    }
 
-      // Return data without attempting decryption if no credentials exist
-      if (!data || data.length === 0) {
-        return []
-      }
-
-      // Process each credential safely
-      const processedData = data.map((credential) => {
+    // Decrypt the credentials
+    const decryptedCredentials = await Promise.all(
+      (data || []).map(async (credential) => {
         try {
-          // Skip decryption if credentials is null or not an object
-          if (!credential.credentials || typeof credential.credentials !== "object") {
-            return credential
-          }
-
-          const decryptedCredentials = { ...credential.credentials }
-
-          // Only attempt to decrypt if the provider slug exists and the field exists
-          if (credential.cloud_providers?.slug === "aws") {
-            if (decryptedCredentials.aws_secret_access_key) {
-              try {
-                decryptedCredentials.aws_secret_access_key = decrypt(
-                  decryptedCredentials.aws_secret_access_key as string,
-                )
-              } catch (e) {
-                console.error("Failed to decrypt AWS secret key:", e)
-                // Keep the encrypted value if decryption fails
-              }
-            }
-          } else if (credential.cloud_providers?.slug === "digitalocean") {
-            if (decryptedCredentials.api_token) {
-              try {
-                decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
-              } catch (e) {
-                console.error("Failed to decrypt DigitalOcean API token:", e)
-              }
-            }
-          } else if (credential.cloud_providers?.slug === "gcp") {
-            if (decryptedCredentials.private_key) {
-              try {
-                decryptedCredentials.private_key = decrypt(decryptedCredentials.private_key as string)
-              } catch (e) {
-                console.error("Failed to decrypt GCP private key:", e)
-              }
-            }
-          } else if (credential.cloud_providers?.slug === "azure") {
-            if (decryptedCredentials.client_secret) {
-              try {
-                decryptedCredentials.client_secret = decrypt(decryptedCredentials.client_secret as string)
-              } catch (e) {
-                console.error("Failed to decrypt Azure client secret:", e)
-              }
-            }
-          } else if (credential.cloud_providers?.slug === "linode") {
-            if (decryptedCredentials.api_token) {
-              try {
-                decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
-              } catch (e) {
-                console.error("Failed to decrypt Linode API token:", e)
-              }
-            }
-          } else if (credential.cloud_providers?.slug === "vultr") {
-            if (decryptedCredentials.api_key) {
-              try {
-                decryptedCredentials.api_key = decrypt(decryptedCredentials.api_key as string)
-              } catch (e) {
-                console.error("Failed to decrypt Vultr API key:", e)
-              }
-            }
-          }
+          const decryptedCreds = credential.credentials ? await decrypt(credential.credentials) : "{}"
 
           return {
-            ...credential,
-            credentials: decryptedCredentials,
+            id: credential.id,
+            name: credential.name,
+            provider_id: credential.provider_id,
+            provider_name: credential.cloud_providers?.name || "Unknown",
+            provider_type: credential.cloud_providers?.type || "unknown",
+            credentials: JSON.parse(decryptedCreds),
+            created_at: credential.created_at,
           }
         } catch (error) {
-          console.error("Error processing credential:", error)
-          // Return the original credential if there's an error
-          return credential
+          console.error("Error decrypting credentials:", error)
+          return {
+            id: credential.id,
+            name: credential.name,
+            provider_id: credential.provider_id,
+            provider_name: credential.cloud_providers?.name || "Unknown",
+            provider_type: credential.cloud_providers?.type || "unknown",
+            credentials: {},
+            created_at: credential.created_at,
+          }
         }
-      })
+      }),
+    )
 
-      return processedData
-    } catch (error) {
-      console.error("Error in database query:", error)
-      return [] // Return empty array on error
-    }
+    return decryptedCredentials
   } catch (error) {
     console.error("Error in getCloudProviderCredentials:", error)
-    return [] // Return empty array on error
+    throw new Error(error instanceof Error ? error.message : "Failed to fetch cloud provider credentials")
   }
 }
 
-// Get a specific cloud provider credential by ID
-export async function getCloudProviderCredential(id: string): Promise<any> {
+// Get a single cloud provider credential by ID
+export async function getCloudProviderCredential(id: string): Promise<CloudProviderCredential | null> {
   try {
     if (!id) {
-      console.log("No credential ID provided")
-      return null
+      throw new Error("Credential ID is required")
     }
 
-    const supabase = createServerComponentClient<Database>({ cookies })
+    // Create a Supabase client
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is a server action, we don't need to set cookies
+          },
+          remove(name: string, options: any) {
+            // This is a server action, we don't need to remove cookies
+          },
+        },
+      },
+    )
 
-    // Check if user is authenticated
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError) {
-      console.error("Error getting user:", userError)
-      throw new Error("Authentication error")
+    // Get the session
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) {
+      console.error("Session error:", sessionError.message)
+      throw new Error("Authentication failed")
     }
 
-    if (!user) {
-      console.log("User not authenticated")
-      throw new Error("User not authenticated")
+    if (!sessionData.session) {
+      throw new Error("Not authenticated")
     }
 
+    const userId = sessionData.session.user.id
+
+    // Get the cloud provider credential
     const { data, error } = await supabase
       .from("cloud_provider_credentials")
-      .select(`
-        id,
-        name,
-        provider_id,
-        credentials,
-        is_default,
-        created_at,
-        updated_at,
+      .select(
+        `
+        *,
         cloud_providers (
-          id,
           name,
-          slug,
-          logo_url
+          type
         )
-      `)
+      `,
+      )
       .eq("id", id)
-      .eq("user_id", user.id)
+      .eq("user_id", userId)
       .single()
 
     if (error) {
-      console.error(`Error fetching cloud provider credential with id ${id}:`, error)
-      throw new Error(`Failed to fetch cloud provider credential: ${error.message}`)
+      console.error("Error fetching cloud provider credential:", error.message)
+      throw new Error("Failed to fetch cloud provider credential")
     }
 
     if (!data) {
-      throw new Error("Cloud provider credential not found")
+      return null
     }
 
-    // Skip decryption if credentials is null or not an object
-    if (!data.credentials || typeof data.credentials !== "object") {
-      return data
-    }
-
-    // Decrypt sensitive credentials
+    // Decrypt the credentials
     try {
-      const decryptedCredentials = { ...data.credentials }
-
-      // Only attempt to decrypt if the provider slug exists and the field exists
-      if (data.cloud_providers?.slug === "aws") {
-        if (decryptedCredentials.aws_secret_access_key) {
-          try {
-            decryptedCredentials.aws_secret_access_key = decrypt(decryptedCredentials.aws_secret_access_key as string)
-          } catch (e) {
-            console.error("Failed to decrypt AWS secret key:", e)
-            // Keep the encrypted value if decryption fails
-          }
-        }
-      } else if (data.cloud_providers?.slug === "digitalocean") {
-        if (decryptedCredentials.api_token) {
-          try {
-            decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
-          } catch (e) {
-            console.error("Failed to decrypt DigitalOcean API token:", e)
-          }
-        }
-      } else if (data.cloud_providers?.slug === "gcp") {
-        if (decryptedCredentials.private_key) {
-          try {
-            decryptedCredentials.private_key = decrypt(decryptedCredentials.private_key as string)
-          } catch (e) {
-            console.error("Failed to decrypt GCP private key:", e)
-          }
-        }
-      } else if (data.cloud_providers?.slug === "azure") {
-        if (decryptedCredentials.client_secret) {
-          try {
-            decryptedCredentials.client_secret = decrypt(decryptedCredentials.client_secret as string)
-          } catch (e) {
-            console.error("Failed to decrypt Azure client secret:", e)
-          }
-        }
-      } else if (data.cloud_providers?.slug === "linode") {
-        if (decryptedCredentials.api_token) {
-          try {
-            decryptedCredentials.api_token = decrypt(decryptedCredentials.api_token as string)
-          } catch (e) {
-            console.error("Failed to decrypt Linode API token:", e)
-          }
-        }
-      } else if (data.cloud_providers?.slug === "vultr") {
-        if (decryptedCredentials.api_key) {
-          try {
-            decryptedCredentials.api_key = decrypt(decryptedCredentials.api_key as string)
-          } catch (e) {
-            console.error("Failed to decrypt Vultr API key:", e)
-          }
-        }
-      }
+      const decryptedCreds = data.credentials ? await decrypt(data.credentials) : "{}"
 
       return {
-        ...data,
-        credentials: decryptedCredentials,
+        id: data.id,
+        name: data.name,
+        provider_id: data.provider_id,
+        provider_name: data.cloud_providers?.name || "Unknown",
+        provider_type: data.cloud_providers?.type || "unknown",
+        credentials: JSON.parse(decryptedCreds),
+        created_at: data.created_at,
       }
     } catch (error) {
       console.error("Error decrypting credentials:", error)
-      return data // Return original data if decryption fails
+      return {
+        id: data.id,
+        name: data.name,
+        provider_id: data.provider_id,
+        provider_name: data.cloud_providers?.name || "Unknown",
+        provider_type: data.cloud_providers?.type || "unknown",
+        credentials: {},
+        created_at: data.created_at,
+      }
     }
   } catch (error) {
     console.error("Error in getCloudProviderCredential:", error)
-    throw new Error(
-      `Failed to fetch cloud provider credential: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    throw new Error(error instanceof Error ? error.message : "Failed to fetch cloud provider credential")
   }
 }
 
 // Create a new cloud provider credential
 export async function createCloudProviderCredential(
-  providerId: number,
   name: string,
-  credentials: Record<string, any>,
-  isDefault = false,
-): Promise<any> {
+  providerId: string,
+  credentials: Record<string, string>,
+): Promise<{ success: boolean; message: string; id?: string }> {
   try {
-    const supabase = createServerComponentClient<Database>({ cookies })
+    console.log("Creating cloud provider credential:", { name, providerId })
 
-    // Check if user is authenticated
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
+    // Create a Supabase client
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is a server action, we don't need to set cookies
+          },
+          remove(name: string, options: any) {
+            // This is a server action, we don't need to remove cookies
+          },
+        },
+      },
+    )
 
-    if (userError) {
-      console.error("Error getting user:", userError)
-      throw new Error("Authentication error")
+    // Get the session
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) {
+      console.error("Session error:", sessionError.message)
+      throw new Error("Authentication failed")
     }
 
-    if (!user) {
-      console.log("User not authenticated")
-      throw new Error("User not authenticated")
+    if (!sessionData.session) {
+      throw new Error("Not authenticated")
     }
 
-    console.log("Creating cloud provider credential with:", {
-      providerId,
-      name,
-      credentialsKeys: Object.keys(credentials),
-      isDefault,
-    })
+    const userId = sessionData.session.user.id
 
-    // Get the provider to determine which fields to encrypt
-    const { data: provider, error: providerError } = await supabase
-      .from("cloud_providers")
-      .select("slug")
-      .eq("id", providerId)
-      .single()
-
-    if (providerError) {
-      console.error(`Error fetching cloud provider with id ${providerId}:`, providerError)
-      throw new Error(`Failed to fetch cloud provider: ${providerError.message}`)
-    }
-
-    if (!provider) {
-      throw new Error(`Cloud provider with id ${providerId} not found`)
-    }
-
-    console.log("Provider slug:", provider.slug)
-
-    // Encrypt sensitive credentials
-    let encryptedCredentials = {}
+    // Encrypt the credentials
+    let encryptedCredentials
     try {
-      // Make a copy of the credentials to avoid modifying the original
-      encryptedCredentials = { ...credentials }
-
-      // Encrypt sensitive fields based on provider type
-      if (provider.slug === "aws") {
-        if (encryptedCredentials.aws_secret_access_key) {
-          encryptedCredentials.aws_secret_access_key = encrypt(encryptedCredentials.aws_secret_access_key)
-        }
-      } else if (provider.slug === "digitalocean") {
-        if (encryptedCredentials.api_token) {
-          encryptedCredentials.api_token = encrypt(encryptedCredentials.api_token)
-        }
-      } else if (provider.slug === "gcp") {
-        if (encryptedCredentials.private_key) {
-          encryptedCredentials.private_key = encrypt(encryptedCredentials.private_key)
-        }
-      } else if (provider.slug === "azure") {
-        if (encryptedCredentials.client_secret) {
-          encryptedCredentials.client_secret = encrypt(encryptedCredentials.client_secret)
-        }
-      } else if (provider.slug === "linode") {
-        if (encryptedCredentials.api_token) {
-          encryptedCredentials.api_token = encrypt(encryptedCredentials.api_token)
-        }
-      } else if (provider.slug === "vultr") {
-        if (encryptedCredentials.api_key) {
-          encryptedCredentials.api_key = encrypt(encryptedCredentials.api_key)
-        }
-      }
+      encryptedCredentials = await encrypt(JSON.stringify(credentials))
     } catch (error) {
       console.error("Error encrypting credentials:", error)
-      throw new Error(`Failed to encrypt credentials: ${error instanceof Error ? error.message : String(error)}`)
+      throw new Error("Failed to encrypt credentials")
     }
 
-    // If this is set as default, unset any existing default for this provider
-    if (isDefault) {
-      try {
-        const { error: updateError } = await supabase
-          .from("cloud_provider_credentials")
-          .update({ is_default: false })
-          .eq("user_id", user.id)
-          .eq("provider_id", providerId)
-
-        if (updateError) {
-          console.error("Error updating existing default credentials:", updateError)
-          // Continue anyway, this is not critical
-        }
-      } catch (error) {
-        console.error("Error updating existing default credentials:", error)
-        // Continue anyway, this is not critical
-      }
-    }
-
-    // Insert the new credential
-    try {
-      console.log("Inserting new credential with:", {
-        user_id: user.id,
-        provider_id: providerId,
-        name,
-        isDefault,
-      })
-
-      const { data, error } = await supabase
-        .from("cloud_provider_credentials")
-        .insert({
-          user_id: user.id,
-          provider_id: providerId,
+    // Create the cloud provider credential
+    const { data, error } = await supabase
+      .from("cloud_provider_credentials")
+      .insert([
+        {
           name,
+          provider_id: providerId,
           credentials: encryptedCredentials,
-          is_default: isDefault,
-        })
-        .select()
-        .single()
+          user_id: userId,
+        },
+      ])
+      .select()
 
-      if (error) {
-        console.error("Error creating cloud provider credential:", error)
-        throw new Error(`Failed to create cloud provider credential: ${error.message}`)
-      }
+    if (error) {
+      console.error("Error creating cloud provider credential:", error.message)
+      throw new Error(`Failed to create cloud provider credential: ${error.message}`)
+    }
 
-      if (!data) {
-        throw new Error("Failed to create cloud provider credential: No data returned")
-      }
+    // Revalidate the cloud providers page
+    revalidatePath("/cloud-providers")
 
-      console.log("Successfully created credential with ID:", data.id)
-
-      revalidatePath("/cloud-providers")
-      revalidatePath("/servers/add")
-
-      return data
-    } catch (error) {
-      console.error("Error in database insert:", error)
-      throw new Error(
-        `Failed to insert cloud provider credential: ${error instanceof Error ? error.message : String(error)}`,
-      )
+    return {
+      success: true,
+      message: "Cloud provider credential created successfully",
+      id: data?.[0]?.id,
     }
   } catch (error) {
     console.error("Error in createCloudProviderCredential:", error)
-    throw new Error(
-      `Failed to create cloud provider credential: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to create cloud provider credential",
+    }
   }
 }
 
-// Update a cloud provider credential
+// Update an existing cloud provider credential
 export async function updateCloudProviderCredential(
   id: string,
-  updates: {
-    name?: string
-    credentials?: Record<string, any>
-    is_default?: boolean
-  },
-): Promise<any> {
+  name: string,
+  providerId: string,
+  credentials: Record<string, string>,
+): Promise<{ success: boolean; message: string }> {
   try {
-    const supabase = createServerComponentClient<Database>({ cookies })
-
-    // Check if user is authenticated
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError) {
-      console.error("Error getting user:", userError)
-      throw new Error("Authentication error")
+    if (!id) {
+      throw new Error("Credential ID is required")
     }
 
-    if (!user) {
-      console.log("User not authenticated")
-      throw new Error("User not authenticated")
+    // Create a Supabase client
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is a server action, we don't need to set cookies
+          },
+          remove(name: string, options: any) {
+            // This is a server action, we don't need to remove cookies
+          },
+        },
+      },
+    )
+
+    // Get the session
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) {
+      console.error("Session error:", sessionError.message)
+      throw new Error("Authentication failed")
     }
 
-    // Get the current credential to determine which fields to encrypt
-    const { data: currentCredential, error: credentialError } = await supabase
-      .from("cloud_provider_credentials")
-      .select(`
-        *,
-        cloud_providers (
-          slug
-        )
-      `)
-      .eq("id", id)
-      .eq("user_id", user.id)
-      .single()
-
-    if (credentialError) {
-      console.error(`Error fetching cloud provider credential with id ${id}:`, credentialError)
-      throw new Error(`Failed to fetch cloud provider credential: ${credentialError.message}`)
+    if (!sessionData.session) {
+      throw new Error("Not authenticated")
     }
 
-    if (!currentCredential) {
-      throw new Error(`Cloud provider credential with id ${id} not found`)
-    }
+    const userId = sessionData.session.user.id
 
-    // Prepare updates
-    const updateData: any = {}
-
-    if (updates.name) {
-      updateData.name = updates.name
-    }
-
-    if (updates.is_default !== undefined) {
-      updateData.is_default = updates.is_default
-
-      // If setting as default, unset any existing default for this provider
-      if (updates.is_default) {
-        try {
-          const { error: updateError } = await supabase
-            .from("cloud_provider_credentials")
-            .update({ is_default: false })
-            .eq("user_id", user.id)
-            .eq("provider_id", currentCredential.provider_id)
-            .neq("id", id)
-
-          if (updateError) {
-            console.error("Error updating existing default credentials:", updateError)
-            // Continue anyway, this is not critical
-          }
-        } catch (error) {
-          console.error("Error updating existing default credentials:", error)
-          // Continue anyway, this is not critical
-        }
-      }
-    }
-
-    if (updates.credentials) {
-      try {
-        // Encrypt sensitive credentials
-        const encryptedCredentials = { ...updates.credentials }
-
-        // Encrypt sensitive fields based on provider type
-        if (currentCredential.cloud_providers?.slug === "aws") {
-          if (encryptedCredentials.aws_secret_access_key) {
-            encryptedCredentials.aws_secret_access_key = encrypt(encryptedCredentials.aws_secret_access_key)
-          }
-        } else if (currentCredential.cloud_providers?.slug === "digitalocean") {
-          if (encryptedCredentials.api_token) {
-            encryptedCredentials.api_token = encrypt(encryptedCredentials.api_token)
-          }
-        } else if (currentCredential.cloud_providers?.slug === "gcp") {
-          if (encryptedCredentials.private_key) {
-            encryptedCredentials.private_key = encrypt(encryptedCredentials.private_key)
-          }
-        } else if (currentCredential.cloud_providers?.slug === "azure") {
-          if (encryptedCredentials.client_secret) {
-            encryptedCredentials.client_secret = encrypt(encryptedCredentials.client_secret)
-          }
-        } else if (currentCredential.cloud_providers?.slug === "linode") {
-          if (encryptedCredentials.api_token) {
-            encryptedCredentials.api_token = encrypt(encryptedCredentials.api_token)
-          }
-        } else if (currentCredential.cloud_providers?.slug === "vultr") {
-          if (encryptedCredentials.api_key) {
-            encryptedCredentials.api_key = encrypt(encryptedCredentials.api_key)
-          }
-        }
-
-        updateData.credentials = encryptedCredentials
-      } catch (error) {
-        console.error("Error encrypting credentials:", error)
-        throw new Error(`Failed to encrypt credentials: ${error instanceof Error ? error.message : String(error)}`)
-      }
-    }
-
-    updateData.updated_at = new Date().toISOString()
-
-    // Update the credential
+    // Encrypt the credentials
+    let encryptedCredentials
     try {
-      const { data, error } = await supabase
-        .from("cloud_provider_credentials")
-        .update(updateData)
-        .eq("id", id)
-        .eq("user_id", user.id)
-        .select()
-        .single()
-
-      if (error) {
-        console.error(`Error updating cloud provider credential with id ${id}:`, error)
-        throw new Error(`Failed to update cloud provider credential: ${error.message}`)
-      }
-
-      if (!data) {
-        throw new Error("Failed to update cloud provider credential: No data returned")
-      }
-
-      revalidatePath("/cloud-providers")
-      revalidatePath("/servers/add")
-
-      return data
+      encryptedCredentials = await encrypt(JSON.stringify(credentials))
     } catch (error) {
-      console.error("Error in database update:", error)
-      throw new Error(
-        `Failed to update cloud provider credential: ${error instanceof Error ? error.message : String(error)}`,
-      )
+      console.error("Error encrypting credentials:", error)
+      throw new Error("Failed to encrypt credentials")
+    }
+
+    // Update the cloud provider credential
+    const { error } = await supabase
+      .from("cloud_provider_credentials")
+      .update({
+        name,
+        provider_id: providerId,
+        credentials: encryptedCredentials,
+      })
+      .eq("id", id)
+      .eq("user_id", userId)
+
+    if (error) {
+      console.error("Error updating cloud provider credential:", error.message)
+      throw new Error("Failed to update cloud provider credential")
+    }
+
+    // Revalidate the cloud providers page
+    revalidatePath("/cloud-providers")
+
+    return {
+      success: true,
+      message: "Cloud provider credential updated successfully",
     }
   } catch (error) {
     console.error("Error in updateCloudProviderCredential:", error)
-    throw new Error(
-      `Failed to update cloud provider credential: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to update cloud provider credential",
+    }
   }
 }
 
 // Delete a cloud provider credential
-export async function deleteCloudProviderCredential(id: string): Promise<{ success: boolean }> {
+export async function deleteCloudProviderCredential(id: string): Promise<{ success: boolean; message: string }> {
   try {
-    const supabase = createServerComponentClient<Database>({ cookies })
-
-    // Check if user is authenticated
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser()
-
-    if (userError) {
-      console.error("Error getting user:", userError)
-      throw new Error("Authentication error")
+    if (!id) {
+      throw new Error("Credential ID is required")
     }
 
-    if (!user) {
-      console.log("User not authenticated")
-      throw new Error("User not authenticated")
+    // Create a Supabase client
+    const cookieStore = cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          get(name: string) {
+            return cookieStore.get(name)?.value
+          },
+          set(name: string, value: string, options: any) {
+            // This is a server action, we don't need to set cookies
+          },
+          remove(name: string, options: any) {
+            // This is a server action, we don't need to remove cookies
+          },
+        },
+      },
+    )
+
+    // Get the session
+    const { data: sessionData, error: sessionError } = await supabase.auth.getSession()
+    if (sessionError) {
+      console.error("Session error:", sessionError.message)
+      throw new Error("Authentication failed")
     }
 
-    const { error } = await supabase.from("cloud_provider_credentials").delete().eq("id", id).eq("user_id", user.id)
+    if (!sessionData.session) {
+      throw new Error("Not authenticated")
+    }
+
+    const userId = sessionData.session.user.id
+
+    // Delete the cloud provider credential
+    const { error } = await supabase.from("cloud_provider_credentials").delete().eq("id", id).eq("user_id", userId)
 
     if (error) {
-      console.error(`Error deleting cloud provider credential with id ${id}:`, error)
-      throw new Error(`Failed to delete cloud provider credential: ${error.message}`)
+      console.error("Error deleting cloud provider credential:", error.message)
+      throw new Error("Failed to delete cloud provider credential")
     }
 
+    // Revalidate the cloud providers page
     revalidatePath("/cloud-providers")
-    revalidatePath("/servers/add")
 
-    return { success: true }
+    return {
+      success: true,
+      message: "Cloud provider credential deleted successfully",
+    }
   } catch (error) {
     console.error("Error in deleteCloudProviderCredential:", error)
-    throw new Error(
-      `Failed to delete cloud provider credential: ${error instanceof Error ? error.message : String(error)}`,
-    )
+    return {
+      success: false,
+      message: error instanceof Error ? error.message : "Failed to delete cloud provider credential",
+    }
   }
 }

@@ -1,15 +1,19 @@
 import { Suspense } from "react"
 import { ClientProviderForm } from "@/components/cloud-providers/client-provider-form"
 import { Skeleton } from "@/components/ui/skeleton"
+import { DashboardLayout } from "@/components/layouts/dashboard-layout"
+import { PageHeader } from "@/components/ui/page-header"
 
 export default function EditCloudProviderPage({ params }: { params: { id: string } }) {
   return (
-    <div className="container mx-auto py-10">
-      <h1 className="text-2xl font-bold mb-6">Edit Cloud Provider Credential</h1>
-      <Suspense fallback={<ProviderFormSkeleton />}>
-        <ClientProviderForm credentialId={params.id} />
-      </Suspense>
-    </div>
+    <DashboardLayout>
+      <PageHeader heading="Edit Cloud Provider Credential" subheading="Update your cloud provider credentials" />
+      <div className="container mx-auto py-6">
+        <Suspense fallback={<ProviderFormSkeleton />}>
+          <ClientProviderForm credentialId={params.id} />
+        </Suspense>
+      </div>
+    </DashboardLayout>
   )
 }
 

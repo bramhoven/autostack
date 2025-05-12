@@ -2,104 +2,98 @@
  * Encryption utilities for sensitive data
  */
 
-import crypto from "crypto"
+import { createCipheriv, createDecipheriv, randomBytes } from "crypto"
+
+// The encryption algorithm to use
+const ALGORITHM = "aes-256-gcm"
 
 // Get the encryption key from environment variables
-const ENCRYPTION_KEY = process.env.ENCRYPTION_KEY
-
-// Check if a string is already encrypted
-export function isEncrypted(text: string): boolean {
-  try {
-    if (!text || typeof text !== "string") {
-      return false
-    }
-
-    // Encrypted strings should be base64 and have a specific format
-    const parts = text.split(":")
-    return parts.length === 2 && parts[0].length === 32 && /^[A-Za-z0-9+/=]+$/.test(parts[1])
-  } catch {
-    return false
+const getEncryptionKey = (): Buffer => {
+  const key = process.env.ENCRYPTION_KEY
+  if (!key) {
+    throw new Error("ENCRYPTION_KEY environment variable is not set")
   }
+
+  // If the key is already a buffer or the right length, use it directly
+  if (key.length === 32) {
+    return Buffer.from(key)
+  }
+
+  // Otherwise, derive a key using a hash function
+  return Buffer.from(key.padEnd(32, "0").slice(0, 32))
 }
 
-// Encrypt a string using AES-256-CBC
-export function encrypt(text: string): string {
+/**
+ * Encrypts a string using AES-256-GCM
+ * @param text The text to encrypt
+ * @returns The encrypted text as a base64 string
+ */
+export async function encrypt(text: string): Promise<string> {
   try {
-    if (!text || typeof text !== "string") {
-      console.warn("Invalid text provided for encryption")
-      return text
+    if (!text) {
+      return ""
     }
 
-    if (!ENCRYPTION_KEY) {
-      console.warn("ENCRYPTION_KEY is not set. Using plaintext.")
-      return text
-    }
+    // Get the encryption key
+    const key = getEncryptionKey()
 
-    // If the text is already encrypted, return it as is
-    if (isEncrypted(text)) {
-      return text
-    }
+    // Create a random initialization vector
+    const iv = randomBytes(16)
 
-    // Create a buffer from the encryption key
-    const key = crypto.createHash("sha256").update(String(ENCRYPTION_KEY)).digest()
-
-    // Generate a random initialization vector
-    const iv = crypto.randomBytes(16)
-
-    // Create cipher
-    const cipher = crypto.createCipheriv("aes-256-cbc", key, iv)
+    // Create the cipher
+    const cipher = createCipheriv(ALGORITHM, key, iv)
 
     // Encrypt the text
     let encrypted = cipher.update(text, "utf8", "base64")
     encrypted += cipher.final("base64")
 
-    // Return the IV and encrypted text as a single string
-    return `${iv.toString("hex")}:${encrypted}`
+    // Get the authentication tag
+    const authTag = cipher.getAuthTag()
+
+    // Combine the IV, encrypted text, and authentication tag
+    const result = JSON.stringify({
+      iv: iv.toString("base64"),
+      encrypted,
+      authTag: authTag.toString("base64"),
+    })
+
+    return Buffer.from(result).toString("base64")
   } catch (error) {
     console.error("Encryption error:", error)
-    // Return the original text if encryption fails
-    return text
+    throw new Error("Failed to encrypt data")
   }
 }
 
-// Decrypt a string that was encrypted using AES-256-CBC
-export function decrypt(encryptedText: string): string {
+/**
+ * Decrypts a string that was encrypted using AES-256-GCM
+ * @param encryptedText The encrypted text as a base64 string
+ * @returns The decrypted text
+ */
+export async function decrypt(encryptedText: string): Promise<string> {
   try {
-    if (!encryptedText || typeof encryptedText !== "string") {
-      console.warn("Invalid text provided for decryption")
-      return encryptedText
+    if (!encryptedText) {
+      return ""
     }
 
-    if (!ENCRYPTION_KEY) {
-      console.warn("ENCRYPTION_KEY is not set. Using plaintext.")
-      return encryptedText
-    }
+    // Get the encryption key
+    const key = getEncryptionKey()
 
-    // If the text is not encrypted, return it as is
-    if (!isEncrypted(encryptedText)) {
-      return encryptedText
-    }
+    // Parse the encrypted data
+    const data = JSON.parse(Buffer.from(encryptedText, "base64").toString())
+    const iv = Buffer.from(data.iv, "base64")
+    const authTag = Buffer.from(data.authTag, "base64")
 
-    // Split the IV and encrypted text
-    const [ivHex, encrypted] = encryptedText.split(":")
-
-    // Create a buffer from the encryption key
-    const key = crypto.createHash("sha256").update(String(ENCRYPTION_KEY)).digest()
-
-    // Convert the IV from hex to buffer
-    const iv = Buffer.from(ivHex, "hex")
-
-    // Create decipher
-    const decipher = crypto.createDecipheriv("aes-256-cbc", key, iv)
+    // Create the decipher
+    const decipher = createDecipheriv(ALGORITHM, key, iv)
+    decipher.setAuthTag(authTag)
 
     // Decrypt the text
-    let decrypted = decipher.update(encrypted, "base64", "utf8")
+    let decrypted = decipher.update(data.encrypted, "base64", "utf8")
     decrypted += decipher.final("utf8")
 
     return decrypted
   } catch (error) {
     console.error("Decryption error:", error)
-    // Return the original text if decryption fails
-    return encryptedText
+    throw new Error("Failed to decrypt data")
   }
 }
