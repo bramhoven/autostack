@@ -294,6 +294,13 @@ export async function createCloudProviderCredential(
       throw new Error("User not authenticated")
     }
 
+    console.log("Creating cloud provider credential with:", {
+      providerId,
+      name,
+      credentialsKeys: Object.keys(credentials),
+      isDefault,
+    })
+
     // Get the provider to determine which fields to encrypt
     const { data: provider, error: providerError } = await supabase
       .from("cloud_providers")
@@ -306,10 +313,14 @@ export async function createCloudProviderCredential(
       throw new Error(`Failed to fetch cloud provider: ${providerError.message}`)
     }
 
-    // Encrypt sensitive credentials
-    const encryptedCredentials = { ...credentials }
+    console.log("Provider slug:", provider.slug)
 
+    // Encrypt sensitive credentials
+    let encryptedCredentials = {}
     try {
+      // Make a copy of the credentials to avoid modifying the original
+      encryptedCredentials = { ...credentials }
+
       // Encrypt sensitive fields based on provider type
       if (provider.slug === "aws") {
         if (encryptedCredentials.aws_secret_access_key) {
@@ -343,34 +354,61 @@ export async function createCloudProviderCredential(
 
     // If this is set as default, unset any existing default for this provider
     if (isDefault) {
-      await supabase
-        .from("cloud_provider_credentials")
-        .update({ is_default: false })
-        .eq("user_id", user.id)
-        .eq("provider_id", providerId)
+      try {
+        const { error: updateError } = await supabase
+          .from("cloud_provider_credentials")
+          .update({ is_default: false })
+          .eq("user_id", user.id)
+          .eq("provider_id", providerId)
+
+        if (updateError) {
+          console.error("Error updating existing default credentials:", updateError)
+          // Continue anyway, this is not critical
+        }
+      } catch (error) {
+        console.error("Error updating existing default credentials:", error)
+        // Continue anyway, this is not critical
+      }
     }
 
-    const { data, error } = await supabase
-      .from("cloud_provider_credentials")
-      .insert({
+    // Insert the new credential
+    try {
+      console.log("Inserting new credential with:", {
         user_id: user.id,
         provider_id: providerId,
         name,
-        credentials: encryptedCredentials,
-        is_default: isDefault,
+        isDefault,
       })
-      .select()
-      .single()
 
-    if (error) {
-      console.error("Error creating cloud provider credential:", error)
-      throw new Error(`Failed to create cloud provider credential: ${error.message}`)
+      const { data, error } = await supabase
+        .from("cloud_provider_credentials")
+        .insert({
+          user_id: user.id,
+          provider_id: providerId,
+          name,
+          credentials: encryptedCredentials,
+          is_default: isDefault,
+        })
+        .select()
+        .single()
+
+      if (error) {
+        console.error("Error creating cloud provider credential:", error)
+        throw new Error(`Failed to create cloud provider credential: ${error.message}`)
+      }
+
+      console.log("Successfully created credential with ID:", data.id)
+
+      revalidatePath("/cloud-providers")
+      revalidatePath("/servers/add")
+
+      return data
+    } catch (error) {
+      console.error("Error in database insert:", error)
+      throw new Error(
+        `Failed to insert cloud provider credential: ${error instanceof Error ? error.message : String(error)}`,
+      )
     }
-
-    revalidatePath("/cloud-providers")
-    revalidatePath("/servers/add")
-
-    return data
   } catch (error) {
     console.error("Error in createCloudProviderCredential:", error)
     throw new Error(

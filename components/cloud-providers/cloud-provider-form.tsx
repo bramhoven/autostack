@@ -15,6 +15,7 @@ import { useToast } from "@/components/ui/use-toast"
 import { useCreateCloudProviderCredential, useUpdateCloudProviderCredential } from "@/hooks/use-cloud-providers"
 import { Loader2 } from "lucide-react"
 import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form"
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert"
 
 // Define the form schema based on provider type
 const baseSchema = z.object({
@@ -76,10 +77,11 @@ export function CloudProviderForm({ providers, credential, defaultProviderId, on
   const router = useRouter()
   const { toast } = useToast()
   const [selectedProvider, setSelectedProvider] = useState<string>(
-    credential?.cloud_provider_id?.toString() || defaultProviderId || "",
+    credential?.provider_id?.toString() || defaultProviderId || "",
   )
   const [providerType, setProviderType] = useState<string>("")
   const [isDefault, setIsDefault] = useState<boolean>(credential?.is_default || false)
+  const [error, setError] = useState<string | null>(null)
 
   const { mutate: createCredential, isPending: isCreating } = useCreateCloudProviderCredential()
   const { mutate: updateCredential, isPending: isUpdating } = useUpdateCloudProviderCredential()
@@ -91,7 +93,7 @@ export function CloudProviderForm({ providers, credential, defaultProviderId, on
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: credential?.name || "",
-      providerId: credential?.cloud_provider_id?.toString() || defaultProviderId || "",
+      providerId: credential?.provider_id?.toString() || defaultProviderId || "",
       providerType: providerType,
       ...(credential?.credentials || {}),
     },
@@ -109,50 +111,83 @@ export function CloudProviderForm({ providers, credential, defaultProviderId, on
   }, [selectedProvider, providers, form])
 
   // Handle form submission
-  const onSubmit = (data: FormValues) => {
-    // Extract credentials based on provider type
-    const { name, providerId, providerType, ...credentials } = data
+  const onSubmit = async (data: FormValues) => {
+    setError(null)
 
-    if (credential) {
-      // Update existing credential
-      updateCredential(
-        {
-          id: credential.id,
-          updates: {
+    try {
+      // Extract credentials based on provider type
+      const { name, providerId, providerType, ...credentials } = data
+
+      console.log("Form data:", { name, providerId, providerType, credentials })
+
+      if (credential) {
+        // Update existing credential
+        updateCredential(
+          {
+            id: credential.id,
+            updates: {
+              name,
+              credentials,
+              is_default: isDefault,
+            },
+          },
+          {
+            onSuccess: () => {
+              toast({
+                title: "Success",
+                description: "Cloud provider credential updated successfully",
+              })
+              if (onSuccess) onSuccess()
+            },
+            onError: (error) => {
+              console.error("Error updating credential:", error)
+              setError(error.message || "Failed to update cloud provider credential")
+              toast({
+                title: "Error",
+                description: error.message || "Failed to update cloud provider credential",
+                variant: "destructive",
+              })
+            },
+          },
+        )
+      } else {
+        // Create new credential
+        createCredential(
+          {
+            providerId: Number.parseInt(providerId),
             name,
             credentials,
-            is_default: isDefault,
+            isDefault,
           },
-        },
-        {
-          onSuccess: () => {
-            toast({
-              title: "Success",
-              description: "Cloud provider credential updated successfully",
-            })
-            if (onSuccess) onSuccess()
+          {
+            onSuccess: () => {
+              toast({
+                title: "Success",
+                description: "Cloud provider credential created successfully",
+              })
+              if (onSuccess) onSuccess()
+            },
+            onError: (error) => {
+              console.error("Error creating credential:", error)
+              setError(error.message || "Failed to create cloud provider credential")
+              toast({
+                title: "Error",
+                description: error.message || "Failed to create cloud provider credential",
+                variant: "destructive",
+              })
+            },
           },
-        },
-      )
-    } else {
-      // Create new credential
-      createCredential(
-        {
-          providerId: Number.parseInt(providerId),
-          name,
-          credentials,
-          isDefault,
-        },
-        {
-          onSuccess: () => {
-            toast({
-              title: "Success",
-              description: "Cloud provider credential created successfully",
-            })
-            if (onSuccess) onSuccess()
-          },
-        },
-      )
+        )
+      }
+    } catch (error) {
+      console.error("Error in form submission:", error)
+      const errorMessage = error instanceof Error ? error.message : "An unexpected error occurred"
+      setError(errorMessage)
+      toast({
+        title: "Error",
+        description: errorMessage,
+        variant: "destructive",
+      })
     }
   }
 
@@ -169,6 +204,13 @@ export function CloudProviderForm({ providers, credential, defaultProviderId, on
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)}>
           <CardContent className="space-y-4">
+            {error && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertTitle>Error</AlertTitle>
+                <AlertDescription>{error}</AlertDescription>
+              </Alert>
+            )}
+
             <FormField
               control={form.control}
               name="name"

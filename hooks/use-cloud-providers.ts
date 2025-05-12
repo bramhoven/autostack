@@ -48,27 +48,31 @@ export function useCreateCloudProviderCredential() {
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: (params: {
+    mutationFn: async (params: {
       providerId: number
       name: string
       credentials: Record<string, any>
       isDefault?: boolean
-    }) => createCloudProviderCredential(params.providerId, params.name, params.credentials, params.isDefault),
+    }) => {
+      try {
+        const result = await createCloudProviderCredential(
+          params.providerId,
+          params.name,
+          params.credentials,
+          params.isDefault,
+        )
+        return result
+      } catch (error) {
+        console.error("Error in createCloudProviderCredential mutation:", error)
+        throw error
+      }
+    },
     onSuccess: () => {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["cloudProviderCredentials"] })
-      toast({
-        title: "Success",
-        description: "Cloud provider credential created successfully",
-      })
     },
     onError: (error: Error) => {
       console.error("Error creating cloud provider credential:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to create cloud provider credential",
-        variant: "destructive",
-      })
     },
   })
 }
@@ -79,30 +83,29 @@ export function useUpdateCloudProviderCredential() {
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: (params: {
+    mutationFn: async (params: {
       id: string
       updates: {
         name?: string
         credentials?: Record<string, any>
         is_default?: boolean
       }
-    }) => updateCloudProviderCredential(params.id, params.updates),
+    }) => {
+      try {
+        const result = await updateCloudProviderCredential(params.id, params.updates)
+        return result
+      } catch (error) {
+        console.error("Error in updateCloudProviderCredential mutation:", error)
+        throw error
+      }
+    },
     onSuccess: (_, variables) => {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["cloudProviderCredentials"] })
       queryClient.invalidateQueries({ queryKey: ["cloudProviderCredential", variables.id] })
-      toast({
-        title: "Success",
-        description: "Cloud provider credential updated successfully",
-      })
     },
     onError: (error: Error) => {
       console.error("Error updating cloud provider credential:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to update cloud provider credential",
-        variant: "destructive",
-      })
     },
   })
 }
@@ -113,22 +116,21 @@ export function useDeleteCloudProviderCredential() {
   const { toast } = useToast()
 
   return useMutation({
-    mutationFn: deleteCloudProviderCredential,
+    mutationFn: async (id: string) => {
+      try {
+        const result = await deleteCloudProviderCredential(id)
+        return result
+      } catch (error) {
+        console.error("Error in deleteCloudProviderCredential mutation:", error)
+        throw error
+      }
+    },
     onSuccess: () => {
       // Invalidate queries to refetch data
       queryClient.invalidateQueries({ queryKey: ["cloudProviderCredentials"] })
-      toast({
-        title: "Success",
-        description: "Cloud provider credential deleted successfully",
-      })
     },
     onError: (error: Error) => {
       console.error("Error deleting cloud provider credential:", error)
-      toast({
-        title: "Error",
-        description: error.message || "Failed to delete cloud provider credential",
-        variant: "destructive",
-      })
     },
   })
 }
