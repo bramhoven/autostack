@@ -5,6 +5,7 @@ import { CloudProvidersList } from "@/components/cloud-providers/cloud-providers
 import { DashboardLayout } from "@/components/layouts/dashboard-layout"
 import { PageHeader } from "@/components/ui/page-header"
 import { Skeleton } from "@/components/ui/skeleton"
+import { Plus } from "lucide-react"
 
 export default function CloudProvidersPage() {
   return (
@@ -15,7 +16,10 @@ export default function CloudProvidersPage() {
           subheading="Manage your cloud provider credentials"
           actions={
             <Link href="/cloud-providers/add">
-              <Button>Add Provider</Button>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                Add Provider
+              </Button>
             </Link>
           }
         />

@@ -81,7 +81,7 @@ export function CloudProvidersList() {
             <AlertTitle>Error</AlertTitle>
             <AlertDescription>{errorMessage}</AlertDescription>
           </Alert>
-          <p className="mt-4 text-sm text-muted-foreground">
+          <p className="mt-4 text-sm text-muted-foreground mb-4">
             This could be because the cloud provider tables haven't been created in your database yet. Please make sure
             you've run the SQL migration script.
           </p>
@@ -124,65 +124,76 @@ export function CloudProvidersList() {
 
   // Show credentials list
   return (
-    <div className="space-y-4">
-      {credentials.map((credential) => (
-        <Card key={credential.id}>
-          <CardHeader className="flex flex-row items-start justify-between">
-            <div>
-              <CardTitle>{credential.name}</CardTitle>
-              <CardDescription>
-                {credential.cloud_providers?.name || "Unknown Provider"}
-                {credential.is_default && " (Default)"}
-              </CardDescription>
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="h-4 w-4" />
-                  <span className="sr-only">Open menu</span>
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => router.push(`/cloud-providers/edit/${credential.id}`)}>
-                  <Edit className="mr-2 h-4 w-4" />
-                  Edit
-                </DropdownMenuItem>
-                <DropdownMenuItem
-                  className="text-destructive focus:text-destructive"
-                  onClick={() => {
-                    setDeleteId(credential.id)
-                    setIsDeleteDialogOpen(true)
-                  }}
-                >
-                  <Trash className="mr-2 h-4 w-4" />
-                  Delete
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </CardHeader>
-          <CardContent>
-            <div className="text-sm">
-              <p>
-                <strong>Provider:</strong> {credential.cloud_providers?.name || "Unknown"}
-              </p>
-              {credential.cloud_providers?.slug === "aws" && credential.credentials && (
+    <div>
+      <div className="flex justify-end mb-4">
+        <Link href="/cloud-providers/add">
+          <Button>
+            <Plus className="mr-2 h-4 w-4" />
+            Add Provider
+          </Button>
+        </Link>
+      </div>
+
+      <div className="space-y-4">
+        {credentials.map((credential) => (
+          <Card key={credential.id}>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div>
+                <CardTitle>{credential.name}</CardTitle>
+                <CardDescription>
+                  {credential.cloud_providers?.name || "Unknown Provider"}
+                  {credential.is_default && " (Default)"}
+                </CardDescription>
+              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreHorizontal className="h-4 w-4" />
+                    <span className="sr-only">Open menu</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => router.push(`/cloud-providers/edit/${credential.id}`)}>
+                    <Edit className="mr-2 h-4 w-4" />
+                    Edit
+                  </DropdownMenuItem>
+                  <DropdownMenuItem
+                    className="text-destructive focus:text-destructive"
+                    onClick={() => {
+                      setDeleteId(credential.id)
+                      setIsDeleteDialogOpen(true)
+                    }}
+                  >
+                    <Trash className="mr-2 h-4 w-4" />
+                    Delete
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </CardHeader>
+            <CardContent>
+              <div className="text-sm">
                 <p>
-                  <strong>Region:</strong> {credential.credentials.aws_region || "N/A"}
+                  <strong>Provider:</strong> {credential.cloud_providers?.name || "Unknown"}
                 </p>
-              )}
-              <p>
-                <strong>Added:</strong> {new Date(credential.created_at).toLocaleDateString()}
-              </p>
-            </div>
-          </CardContent>
-          <CardFooter>
-            <Button variant="outline" size="sm" onClick={() => router.push(`/cloud-providers/edit/${credential.id}`)}>
-              <Edit className="mr-2 h-4 w-4" />
-              Edit
-            </Button>
-          </CardFooter>
-        </Card>
-      ))}
+                {credential.cloud_providers?.slug === "aws" && credential.credentials && (
+                  <p>
+                    <strong>Region:</strong> {credential.credentials.aws_region || "N/A"}
+                  </p>
+                )}
+                <p>
+                  <strong>Added:</strong> {new Date(credential.created_at).toLocaleDateString()}
+                </p>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button variant="outline" size="sm" onClick={() => router.push(`/cloud-providers/edit/${credential.id}`)}>
+                <Edit className="mr-2 h-4 w-4" />
+                Edit
+              </Button>
+            </CardFooter>
+          </Card>
+        ))}
+      </div>
 
       {/* Delete Confirmation Dialog */}
       <Dialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
